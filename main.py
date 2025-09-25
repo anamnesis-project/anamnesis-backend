@@ -1,11 +1,10 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import List
+import queue
+from vosk import Model, KaldiRecognizer
 
 app = FastAPI()
-
-# ---------------------------
-# REST ENDPOINTS
-# ---------------------------
+stt_model = Model(lang="en-us", model_path="./model/vosk-model-en-us-0.22")
 
 
 @app.get("/")
@@ -17,10 +16,6 @@ def root():
 # def read_item(item_id: int, q: str | None = None):
 #     return {"item_id": item_id, "q": q}
 
-
-# ---------------------------
-# WEBSOCKET ENDPOINT
-# ---------------------------
 
 class ConnectionManager:
     def __init__(self):
@@ -40,13 +35,41 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket("/ws/tts")
+async def websocket_tts(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
             print(data)
+            await manager.send_message(f"You wrote: {data}", websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+
+@app.websocket("/ws/stt")
+async def websocket_stt(websocket: WebSocket):
+    q = queue.Queue()
+    listening = False
+
+    await manager.connect(websocket)
+    try:
+        while True:
+            msg = await websocket.receive()
+            if msg["type"] != "websocket.receive":
+                continue
+
+            if "text" in msg:
+                '''
+                    Parse text as json (start or end + sample rate)
+                '''
+                # if msg == "start":
+                #     listening = True
+                # elif msg == "end":
+                #     listening = False
+            elif "bytes" in msg:
+                # send bytes to transcriber
+
             await manager.send_message(f"You wrote: {data}", websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
