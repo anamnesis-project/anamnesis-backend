@@ -1,11 +1,12 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from tts import TextToSpeech
 from typing import List
-import queue
+import queuex   
 from vosk import Model, KaldiRecognizer
 
 app = FastAPI()
 stt_model = Model(lang="en-us", model_path="./model/vosk-model-en-us-0.22")
-
+TTSEngine = TextToSpeech()
 
 @app.get("/")
 def root():
@@ -42,6 +43,8 @@ async def websocket_tts(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             print(data)
+            audio_bytes = TTSEngine.synthesize_to_bytes(data)
+            await websocket.send_bytes(audio_bytes)
             await manager.send_message(f"You wrote: {data}", websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
