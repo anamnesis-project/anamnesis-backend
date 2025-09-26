@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from typing import List
+from typing import List, cast
 import queue
+import json
 from vosk import Model, KaldiRecognizer
 
 app = FastAPI()
@@ -51,6 +52,8 @@ async def websocket_tts(websocket: WebSocket):
 async def websocket_stt(websocket: WebSocket):
     q = queue.Queue()
     listening = False
+    sample_rate = 0
+    rec = None
 
     await manager.connect(websocket)
     try:
@@ -60,16 +63,37 @@ async def websocket_stt(websocket: WebSocket):
                 continue
 
             if "text" in msg:
-                '''
-                    Parse text as json (start or end + sample rate)
-                '''
-                # if msg == "start":
-                #     listening = True
-                # elif msg == "end":
-                #     listening = False
-            elif "bytes" in msg:
-                # send bytes to transcriber
+                msgText = cast(str, msg["text"])
+                try:
+                    msgJson = json.loads(msgText)
+                    if msgJson["command"] == "start":
+                        listening = True
+                        sample_rate = msgJson["sample_rate"]
+                        rec = KaldiRecognizer(stt_model, sample_rate)
+                        continue
+                    elif msgJson["command"] == "stop":
+                        listening = False
 
-            await manager.send_message(f"You wrote: {data}", websocket)
+                except:
+                    await websocket.send_text("invalid json")
+                    listening = False
+                    q.queue.clear()
+                    sample_rate = 0
+                    continue
+                
+            elif "bytes" in msg:
+                if not listening:
+                    continue
+
+                q.put(msg["bytes"])
+                if rec is None:
+                    continue
+
+                if rec.AcceptWaveform(msg["bytes"]):
+                    await manager.send_message(rec.Result(), websocket)
+                else:
+                    print(rec.PartialResult())
+
+            await manager.send_message(f"You wrote: {msg}", websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
