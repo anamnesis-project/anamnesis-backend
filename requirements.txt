@@ -1,2 +1,3 @@
 fastapi[standard]
 vosk
+piper-tts
