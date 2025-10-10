@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
 	"fmt"
+	"net/http"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -170,17 +171,29 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, response)
 }
 
-// TODO add query parameter parsing
 func (s *Server) handleGetEmployees(w http.ResponseWriter, r *http.Request) error {
 	q := `SELECT e.employee_id, e.name, e.email, e.cpf, e.access_allowed, r.role_id, r.name
 	FROM employee e JOIN employee_role r on e.role_id = r.role_id`
+	var rows pgx.Rows
 
-	output := make([]EmployeeOutput, 0)
-	rows, err := s.db.Query(context.Background(), q)
+	queryParams := r.URL.Query()
+	accessAllowedFilter, err := strconv.ParseBool(queryParams.Get("accessAllowed"))
+	// err means there is no filter applied
 	if err != nil {
-		fmt.Println("db error:", err.Error())
-		return InternalError()
+		rows, err = s.db.Query(context.Background(), q)
+		if err != nil {
+			fmt.Println("db error:", err.Error())
+			return InternalError()
+		}
+	} else {
+		q += " WHERE e.access_allowed = $1"
+		rows, err = s.db.Query(context.Background(), q, accessAllowedFilter)
+		if err != nil {
+			fmt.Println("db error:", err.Error())
+			return InternalError()
+		}
 	}
+	output := make([]EmployeeOutput, 0)
 	defer rows.Close()
 
 	for rows.Next() {
