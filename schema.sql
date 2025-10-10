@@ -1,6 +1,6 @@
 
 CREATE TABLE patient (
-    patiend_id    SERIAL PRIMARY KEY,
+    patient_id    SERIAL PRIMARY KEY,
     name          VARCHAR(255) NOT NULL,
     cpf           VARCHAR(11) NOT NULL,
     date_of_birth DATE,

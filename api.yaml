@@ -1,3 +1,5 @@
+# TODO add endpoints for authorizing employees
+
 paths:
   /reports:
     get:
@@ -287,6 +289,7 @@ paths:
                   message:
                     type: string
 
+  # TODO creating employee should return both the token AND the employee
   /register:
     post:
       summary: Create employee account
