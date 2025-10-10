@@ -1,0 +1,442 @@
+paths:
+  /reports:
+    get:
+      summary: List all reports
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#components/schemas/Report'
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+    post:
+      summary: Create report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportCreate'
+
+      responses:
+        '201':
+          description: Report created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+
+  /reports/{id}:
+    get:
+      summary: Get report by id
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+      responses:
+        '200':
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /reports/{id}/pdf:
+    get:
+      summary: Get report as PDF file
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+      responses:
+        '200':
+          description: Report as PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+##############################################
+
+  /patients:
+    get:
+      summary: List all patients
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Patient list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Patient'
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /patients/{id}:
+    get:
+      summary: Get patient by id
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+      responses:
+        '200':
+          description: Single patient
+          content:
+            application/json:
+              $ref: '#/components/schemas/Patient'
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /patients/{id}/reports:
+    get:
+      summary: List all reports belonging to a patient by patient id
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+      responses:
+        '200':
+          description: Patient Report list
+          content:
+            application/json:
+              type: array
+              items:
+                $ref: '#/components/schemas/Report'
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+##############################################
+
+  /employees:
+    get:
+      summary: List employees 
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: accessAllowed
+          in: query
+          schema:
+            type: boolean
+
+      responses:
+        '200':
+          description: employee list
+          content:
+            application/json:
+              type: array
+              items:
+                $ref: '#/components/schemas/Employee'
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /employees/{id}:
+    get:
+      summary: Get employee by id
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+      responses:
+        '200':
+          description: Single employee
+          content:
+            application/json:
+                $ref: '#/components/schemas/Employee'
+
+        '401':
+          description: Missing JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+##############################################
+
+  /login:
+    post:
+      summary: Attempt login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful (returns JWT token)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+        '401':
+          description: Failed to login (returns error message)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /register:
+    post:
+      summary: Create employee account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeCreate'
+
+      responses:
+        '201':
+          description: Register successful (returns token)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '400':
+          desctiption: Field validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+##############################################
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ReportBase:
+      type: object
+      properties:
+        weight:
+          description: Weight in Kg
+          type: number
+        height:
+          description: Height in cms
+          type: integer
+        heart_rate:
+          type: integer
+        systolic_pressure:
+          type: integer
+        diastolic_pressure:
+          type: integer
+        temperature:
+          description: Temperature in celsius
+          type: number
+        oxygen_saturation:
+          description: Oxygen saturation in %
+          type: integer
+          minimum: 0
+          maximum: 100
+        interview:
+          type: array
+          items:
+            type: object
+            properties:
+              question:
+                type: string
+              answer:
+                type: string
+
+    Report:
+      allOf:
+        - $ref: '#/components/schemas/ReportBase'
+        - type: object
+          properties:
+            id:
+              type: integer
+            patient:
+              $ref: '#/components/schemas/Patient'
+            issuedAt:
+              type: string
+              format: date-time
+
+    ReportCreate:
+      allOf:
+        - $ref: '#/components/schemas/ReportBase'
+        - $ref: '#/components/schemas/PatientBase'
+
+    PatientBase:
+      type: object
+      properties:
+        name:
+          type: string
+        cpf:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+          example: '1999-12-31'
+        sex:
+          type: string
+          enum: [M, F]
+
+    Patient:
+      allOf:
+        - $ref: '#/components/schemas/PatientBase'
+        - type: object
+          properties:
+            id:
+              type: integer
+
+    EmployeeBase:
+      type: object
+      properties:
+        name:
+          type: string
+        cpf:
+          type: string
+        email:
+          type: string
+
+
+    EmployeeCreate:
+      allOf:
+        - $ref: '#components/schemas/EmployeeBase'
+        - type: object
+          properties:
+            password:
+              type: string
+              maxLength: 72
+
+    Employee:
+      allOf:
+        - $ref: '#components/schemas/EmployeeBase'
+        - type: object
+          properties:
+            id:
+              type: integer
+            role:
+              $ref: '#/components/schemas/Role'
+            accessAllowed:
+              type: boolean
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
