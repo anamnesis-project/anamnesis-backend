@@ -83,6 +83,10 @@ func (r RegisterRequest) validate() map[string]string {
 	return errs
 }
 
+type PatchEmployeeRequest struct {
+	RoleId int `json:"roleId"`
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	var req LoginRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -226,6 +230,66 @@ func (s *Server) handleGetEmployeeById(w http.ResponseWriter, r *http.Request) e
 	err = row.Scan(&emp.Id, &emp.Name, &emp.Email, &emp.CPF, &emp.AccessAllowed, &emp.Role.Id, &emp.Role.Name)
 	if err != nil {
 		return writeJSON(w, http.StatusOK, nil)
+	}
+
+	return writeJSON(w, http.StatusOK, emp)
+}
+
+func (s *Server) handlePatchEmployeePermissions(w http.ResponseWriter, r *http.Request) error {
+	employeeId, err := getPathId("id", r)
+	if err != nil {
+		return BadRequest()
+	}
+
+	callerId, err := getIdFromToken(r)
+	if err != nil {
+		return  UserNotAuthenticated();
+	}
+	
+	q := `SELECT e.role_id FROM employee e WHERE e.employee_id = $1`
+	row := s.db.QueryRow(context.Background(), q, callerId)
+
+	var callerRoleId int
+	err = row.Scan(&callerRoleId)
+	if err != nil {
+		return BadRequest()
+	}
+
+	// NOTE considering id 1 as admin (should maybe change this)
+	if callerRoleId != 1 {
+		return APIError{
+			StatusCode: http.StatusUnauthorized,
+			Msg: "You do not have the necessary permissions",
+		}
+	}
+
+	var req PatchEmployeeRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return BadRequest()
+	}
+
+	q = `SELECT 1 FROM employee_role WHERE role_id = $1 LIMIT 1`
+
+	row = s.db.QueryRow(context.Background(), q, req.RoleId)
+	if err = row.Scan(nil); err != nil {
+		return NewAPIError(http.StatusBadRequest, "selected role does not exist")
+	}
+
+	q = `
+	UPDATE employee e SET role_id = $1, access_allowed = TRUE
+	FROM employee_role r WHERE employee_id = $2
+	RETURNING e.employee_id, e.role_id, r.name, e.name, e.email, e.cpf, e.access_allowed
+	`
+
+	var emp EmployeeOutput
+	row = s.db.QueryRow(context.Background(), q, req.RoleId, employeeId)
+	err = row.Scan(
+		&emp.Id, &emp.Role.Id, &emp.Role.Name, &emp.Name,
+		&emp.Email, &emp.CPF, &emp.AccessAllowed)
+	
+	if err != nil {
+		return err
 	}
 
 	return writeJSON(w, http.StatusOK, emp)

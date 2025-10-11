@@ -139,6 +139,7 @@ func NewServer(port string) *Server {
 
 	http.HandleFunc("GET /employees", makeHandler(s.handleGetEmployees))
 	http.HandleFunc("GET /employees/{id}", makeHandler(s.handleGetEmployeeById))
+	http.HandleFunc("PATCH /employees/{id}", makeHandler(s.handlePatchEmployeePermissions))
 
 	http.HandleFunc("POST /login", makeHandler(s.handleLogin))
 	http.HandleFunc("POST /register", makeHandler(s.handleRegister))

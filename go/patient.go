@@ -83,7 +83,6 @@ func (s *Server) handleGetPatientReports(w http.ResponseWriter, r *http.Request)
 	row := s.db.QueryRow(context.Background(), q, patientId)
 	err = row.Scan(&p.Id, &p.Name, &p.CPF, &p.Sex, &p.DateOfBirth)
 		if err != nil {
-			// TODO this means the patient doesnt exist. Therefore maybe return empty patient?
 			return BadRequest()
 		}
 
