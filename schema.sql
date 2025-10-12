@@ -23,7 +23,7 @@ CREATE TABLE report (
 
 CREATE TABLE employee_role (
     role_id SERIAL PRIMARY KEY,
-    name    VARCHAR(20) NOT NULL,
+    name    VARCHAR(20) NOT NULL
 );
 
 CREATE TABLE employee (
@@ -33,6 +33,6 @@ CREATE TABLE employee (
     email          VARCHAR(255) NOT NULL,
     cpf            VARCHAR(11) NOT NULL,
     password_hash  VARCHAR(60) NOT NULL,
-    access_allowed BOOLEAN DEFAULT FALSE,
+    access_allowed BOOLEAN DEFAULT FALSE
 );
 

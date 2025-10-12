@@ -1,4 +1,12 @@
 # TODO add endpoints for authorizing employees
+openapi: 3.1.1
+
+info:
+  title: Patient Report Service
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
 
 paths:
   /reports:
@@ -157,7 +165,8 @@ paths:
           description: Single patient
           content:
             application/json:
-              $ref: '#/components/schemas/Patient'
+              schema:
+                $ref: '#/components/schemas/Patient'
 
         '401':
           description: Missing or invalid JWT token
@@ -186,9 +195,10 @@ paths:
           description: Patient Report list
           content:
             application/json:
-              type: array
-              items:
-                $ref: '#/components/schemas/Report'
+              schema:            
+                type: array
+                items:
+                  $ref: '#/components/schemas/Report'
 
         '401':
           description: Missing or invalid JWT token
@@ -218,9 +228,10 @@ paths:
           description: employee list
           content:
             application/json:
-              type: array
-              items:
-                $ref: '#/components/schemas/Employee'
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Employee'
 
         '401':
           description: Missing or invalid JWT token
@@ -249,6 +260,7 @@ paths:
           description: Single employee
           content:
             application/json:
+              schema:
                 $ref: '#/components/schemas/Employee'
 
         '401':
@@ -282,9 +294,10 @@ paths:
                   type: integer
       responses:
         '200':
-          desctiption: Employee permissions modified successfully
+          description: Employee permissions modified successfully
           content:
             application/json:
+              schema:
                 $ref: '#/components/schemas/Employee'
 
         '401':
@@ -357,7 +370,7 @@ paths:
                   token:
                     type: string
         '400':
-          desctiption: Field validation error
+          description: Field validation error
           content:
             application/json:
               schema:
@@ -498,3 +511,4 @@ components:
           type: integer
         name:
           type: string
+
