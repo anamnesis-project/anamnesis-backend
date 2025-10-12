@@ -9,33 +9,38 @@ import (
 )
 
 type ReportOutput struct {
-	Id                int             `json:"id"`
-	Patient           PatientOutput   `json:"patient"`
-	Weight            float32         `json:"weight"`
-	Height            int             `json:"height"`
-	HeartRate         int             `json:"heartRate"`
-	SystolicPressure  int             `json:"systolicPressure"`
-	DiastolicPressure int             `json:"diastolicPressure"`
-	Temperature       float32         `json:"temperature"`
-	OxygenSaturation  int             `json:"oxygenSaturation"`
-
-	// TODO check if this is the correct approach
-	Interview         json.RawMessage `json:"interview"`
-	IssuedAt          time.Time       `json:"issuedAt"`
+	Id                int           `json:"id"`
+	Patient           PatientOutput `json:"patient"`
+	Weight            float32       `json:"weight"`
+	Height            int           `json:"height"`
+	HeartRate         int           `json:"heartRate"`
+	SystolicPressure  int           `json:"systolicPressure"`
+	DiastolicPressure int           `json:"diastolicPressure"`
+	Temperature       float32       `json:"temperature"`
+	OxygenSaturation  int           `json:"oxygenSaturation"`
+	Interview         []QA          `json:"interview"`
+	IssuedAt          time.Time     `json:"issuedAt"`
 }
 
 type CreateReportRequest struct {
-	Patient           PatientInput    `json:"patient"`
-	Weight            float32         `json:"weight"`
-	Height            int             `json:"height"`
-	HeartRate         int             `json:"heartRate"`
-	SystolicPressure  int             `json:"systolicPressure"`
-	DiastolicPressure int             `json:"diastolicPressure"`
-	Temperature       float32         `json:"temperature"`
-	OxygenSaturation  int             `json:"oxygenSaturation"`
+	Patient           PatientInput `json:"patient"`
+	Weight            float32      `json:"weight"`
+	Height            int          `json:"height"`
+	HeartRate         int          `json:"heartRate"`
+	SystolicPressure  int          `json:"systolicPressure"`
+	DiastolicPressure int          `json:"diastolicPressure"`
+	Temperature       float32      `json:"temperature"`
+	OxygenSaturation  int          `json:"oxygenSaturation"`
+	Interview         []QA         `json:"interview"`
+}
 
-	// TODO check if this is the correct approach
-	Interview         json.RawMessage `json:"interview"`
+type TestRequest struct {
+	Interview []QA `json:"interview"`
+}
+
+type QA struct {
+	Question string `json:"question"`
+	Answer   string `json:"answer"`
 }
 
 func (r CreateReportRequest) validate() map[string][]string {
@@ -87,6 +92,10 @@ func (r CreateReportRequest) validate() map[string][]string {
 
 	if r.OxygenSaturation > 100 {
 		errs["saturation"] = append(errs["saturation"], "saturation must be at most 100%")
+	}
+
+	if len(r.Interview) == 0 {
+		errs["interview"] = append(errs["interview"], "interview must not be empty")
 	}
 
 	return errs

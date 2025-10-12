@@ -17,7 +17,7 @@ CREATE TABLE report (
     diastolic_pressure INTEGER,
     temperature        NUMERIC(3, 1),
     oxygen_saturation  INTEGER,
-    interview          JSON NOT NULL,
+    interview          JSONB,
     issued_at          TIMESTAMP NOT NULL
 );
 

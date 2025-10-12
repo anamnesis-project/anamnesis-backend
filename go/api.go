@@ -128,18 +128,18 @@ func NewServer(port string) *Server {
 
 	s.initDB()
 
-	http.HandleFunc("GET /reports", makeHandler(s.handleGetReports))
-	http.HandleFunc("GET /reports/{id}", makeHandler(s.handleGetReportById))
-	http.HandleFunc("GET /reports/{id}/pdf", makeHandler(s.handleGetReportPDF))
+	http.HandleFunc("GET /reports", makeHandler(jwtMiddleware(s.handleGetReports)))
+	http.HandleFunc("GET /reports/{id}", makeHandler(jwtMiddleware(s.handleGetReportById)))
+	http.HandleFunc("GET /reports/{id}/pdf", makeHandler(jwtMiddleware(s.handleGetReportPDF)))
 	http.HandleFunc("POST /reports", makeHandler(s.handleCreateReport))
 
-	http.HandleFunc("GET /patients", makeHandler(s.handleGetPatients))
-	http.HandleFunc("GET /patients/{id}", makeHandler(s.handleGetPatientById))
-	http.HandleFunc("GET /patients/{id}/reports", makeHandler(s.handleGetPatientReports))
+	http.HandleFunc("GET /patients", makeHandler(jwtMiddleware(s.handleGetPatients)))
+	http.HandleFunc("GET /patients/{id}", makeHandler(jwtMiddleware(s.handleGetPatientById)))
+	http.HandleFunc("GET /patients/{id}/reports", makeHandler(jwtMiddleware(s.handleGetPatientReports)))
 
-	http.HandleFunc("GET /employees", makeHandler(s.handleGetEmployees))
-	http.HandleFunc("GET /employees/{id}", makeHandler(s.handleGetEmployeeById))
-	http.HandleFunc("PATCH /employees/{id}", makeHandler(s.handlePatchEmployeePermissions))
+	http.HandleFunc("GET /employees", makeHandler(jwtMiddleware(s.handleGetEmployees)))
+	http.HandleFunc("GET /employees/{id}", makeHandler(jwtMiddleware(s.handleGetEmployeeById)))
+	http.HandleFunc("PATCH /employees/{id}", makeHandler(jwtMiddleware(s.handlePatchEmployeePermissions)))
 
 	http.HandleFunc("POST /login", makeHandler(s.handleLogin))
 	http.HandleFunc("POST /register", makeHandler(s.handleRegister))
