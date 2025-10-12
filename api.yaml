@@ -42,6 +42,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Report'
+        '422':
+          description: Report data validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    $ref: '#/components/schemas/ReportValidationError'
 
   /reports/{id}:
     get:
@@ -417,6 +426,15 @@ components:
       allOf:
         - $ref: '#/components/schemas/ReportBase'
         - $ref: '#/components/schemas/PatientBase'
+
+    ReportValidationError:
+      type: object
+      # May contain one or more of the properties
+      properties:
+        name:
+          type: array
+          items:
+            type: string
 
     PatientBase:
       type: object

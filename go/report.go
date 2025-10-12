@@ -36,15 +36,61 @@ type CreateReportRequest struct {
 
 	// TODO check if this is the correct approach
 	Interview         json.RawMessage `json:"interview"`
-	IssuedAt          time.Time       `json:"issuedAt"`
 }
 
-// TODO make it so the validation matches the api description
-// func (r CreateReportRequest) validate() map[string]string {
-//
-//
-// 	return errs
-// }
+func (r CreateReportRequest) validate() map[string][]string {
+	errs := make(map[string][]string)
+
+	if len(r.Patient.Name) == 0 {
+		errs["name"] = append(errs["name"], "patient name missing")
+	}
+
+	if !ValidateCPF(r.Patient.CPF) {
+		errs["cpf"] = append(errs["cpf"], "invalid CPF")
+	}
+
+	if r.Patient.Sex != Male && r.Patient.Sex != Female {
+		errs["sex"] = append(errs["sex"], "invalid sex")
+	}
+
+	if !r.Patient.DateOfBirth.Before(time.Now()) {
+		errs["dateOfBirth"] = append(errs["dateOfBirth"], "invalid date of birth")
+	}
+
+	if r.Weight < 0 {
+		errs["weight"] = append(errs["weight"], "weight must be greater than 0 Kg")
+	}
+
+	if r.Height < 0 {
+		errs["height"] = append(errs["height"], "height must be greater than 0 cm")
+	}
+
+	if r.HeartRate < 0 {
+		errs["heartRate"] = append(errs["heartRate"], "heart rate must be greater than 0 bpm")
+	}
+
+	if r.SystolicPressure < 0 {
+		errs["systolicPressure"] = append(errs["systolicPressure"], "systolic pressure must be greater than 0")
+	}
+
+	if r.DiastolicPressure < 0 {
+		errs["diastolicPressure"] = append(errs["diastolicPressure"], "diastolic pressure must be greater than 0")
+	}
+
+	if r.Temperature < 0 {
+		errs["temperature"] = append(errs["temperature"], "temperature must be greater than 0 C")
+	}
+
+	if r.OxygenSaturation < 0 {
+		errs["saturation"] = append(errs["saturation"], "saturation must be greater than 0%")
+	}
+
+	if r.OxygenSaturation > 100 {
+		errs["saturation"] = append(errs["saturation"], "saturation must be at most 100%")
+	}
+
+	return errs
+}
 
 func (s *Server) handleGetReports(w http.ResponseWriter, r *http.Request) error {
 	q := `SELECT r.report_id, r.weight, r.height, r.heart_rate,
@@ -127,7 +173,10 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 		return BadRequest()
 	}
 
-	// errs := req.validate()
+	errs := req.validate()
+	if len(errs) > 0 {
+		return NewAPIError(http.StatusUnprocessableEntity, errs)
+	}
 
 	q := `SELECT p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth
 	FROM patient p WHERE p.cpf = $1 LIMIT 1`

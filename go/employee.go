@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
@@ -61,24 +62,45 @@ type EmployeeLoginResponse struct {
 	Token string `json:"token"`
 }
 
-// TODO make it so the validation matches the api description
-func (r RegisterRequest) validate() map[string]string {
-	// TODO add validation for email
-	// TODO add validation for cpf
+func (r RegisterRequest) validate() map[string][]string {
+	errs := make(map[string][]string)
 
-	errs := make(map[string]string)
 	if len(r.Name) < 3 {
-		errs["name"] = "name must be at least 3 characters long"
+		errs["name"] = append(errs["name"], "name must be at least 3 characters long")
 	}
 
 	if len(r.Password) > 72 {
-		errs["password"] = "password must not exceed 72 characters"
+		errs["password"] = append(errs["password"], "password must not exceed 72 characters")
 	}
 
 	if len(r.Password) < 12 {
-		errs["password"] = "password must be at least 12 characters long"
+		errs["password"] = append(errs["password"], "password must be at least 12 characters long")
 	}
-	// TODO add better validation for weak passwords
+
+	if !ContainsNumber(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain a number")
+	}
+
+	if !ContainsLowerCaseLetter(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain a lower case letter")
+	}
+
+	if !ContainsUpperCaseLetter(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain an upper case letter")
+	}
+
+	if !ContainsSpecialCharacter(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain at least 1 special character")
+	}
+
+	_, err := mail.ParseAddress(r.Email)
+	if err != nil {
+		errs["email"] = append(errs["email"], "email is invalid")
+	}
+
+	if !ValidateCPF(r.CPF) {
+		errs["cpf"] = append(errs["cpf"], "invalid CPF")
+	}
 
 	return errs
 }
@@ -162,7 +184,6 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	jwt, err := createJWT(emp.Id)
-	// TODO if this fails here, the insertion should be cancelled
 	if err != nil {
 		return err
 	}
