@@ -22,17 +22,17 @@ CREATE TABLE report (
 );
 
 CREATE TABLE employee_role (
-    role_id SERIAL PRIMARY KEY,
-    name    VARCHAR(20) NOT NULL
+    role_id        SERIAL PRIMARY KEY,
+    name           VARCHAR(20) NOT NULL,
+    access_allowed BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE employee (
     employee_id    SERIAL PRIMARY KEY,
-    role_id        INTEGER REFERENCES employee_role,
+    role_id        INTEGER REFERENCES employee_role DEFAULT 1,
     name           VARCHAR(255) NOT NULL,
     email          VARCHAR(255) NOT NULL,
     cpf            VARCHAR(11) NOT NULL,
-    password_hash  VARCHAR(60) NOT NULL,
-    access_allowed BOOLEAN DEFAULT FALSE
+    password_hash  VARCHAR(60) NOT NULL
 );
 

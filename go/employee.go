@@ -35,13 +35,13 @@ type EmployeeOutput struct {
 	Name          string `json:"name"`
 	Email         string `json:"email"`
 	CPF           string `json:"cpf"`
-	AccessAllowed bool   `json:"accessAllowed"`
 	Role          Role   `json:"role"`
 }
 
 type Role struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id            int    `json:"id"`
+	Name          string `json:"name"`
+	AccessAllowed bool   `json:"accessAllowed"`
 }
 
 type RegisterRequest struct {
@@ -60,6 +60,7 @@ type RegisterResponse struct {
 
 type EmployeeLoginResponse struct {
 	Token string `json:"token"`
+	Employee  EmployeeOutput `json:"employee"`
 }
 
 func (r RegisterRequest) validate() map[string][]string {
@@ -135,7 +136,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+
 	resp := EmployeeLoginResponse{Token: jwt}
+	// NOTE this query could be removed by fetching everything together with the password hash, but I don't care :)
+	resp.Employee, err = s.getEmployee(id)
+	if err != nil {
+		fmt.Println("fuck 0")
+		fmt.Println("id", id)
+		return NewAPIError(http.StatusUnauthorized, "authentication attempt failed")
+	}
 
 	return writeJSON(w, http.StatusOK, resp)
 }
@@ -171,14 +180,20 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 	}
 	hash := string(hashBytes)
 	
-	q = `INSERT INTO employee(name, email, cpf, password_hash, access_allowed)
-	VALUES($1, $2, $3, $4, FALSE)
-	RETURNING employee_id, name, email, cpf, access_allowed`
+	q = `
+	INSERT INTO employee(name, email, cpf, password_hash)
+	VALUES($1, $2, $3, $4) RETURNING employee_id
+	`
 
-	row = s.db.QueryRow(context.Background(), q, &req.Name, &req.Email, &req.CPF, &hash)
+	row = s.db.QueryRow(context.Background(), q, req.Name, req.Email, req.CPF, hash)
 
-	var emp EmployeeOutput
-	err = row.Scan(&emp.Id, &emp.Name, &emp.Email, &emp.CPF, &emp.AccessAllowed)
+	var newEntryId int
+	err = row.Scan(&newEntryId)
+	if err != nil {
+		return err
+	}
+
+	emp, err := s.getEmployee(newEntryId)
 	if err != nil {
 		return err
 	}
@@ -197,7 +212,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) handleGetEmployees(w http.ResponseWriter, r *http.Request) error {
-	q := `SELECT e.employee_id, e.name, e.email, e.cpf, e.access_allowed, r.role_id, r.name
+	q := `SELECT e.employee_id, e.name, e.email, e.cpf, r.role_id, r.name, r.access_allowed
 	FROM employee e JOIN employee_role r on e.role_id = r.role_id`
 	var rows pgx.Rows
 
@@ -211,7 +226,7 @@ func (s *Server) handleGetEmployees(w http.ResponseWriter, r *http.Request) erro
 			return InternalError()
 		}
 	} else {
-		q += " WHERE e.access_allowed = $1"
+		q += " AND r.access_allowed = $1"
 		rows, err = s.db.Query(context.Background(), q, accessAllowedFilter)
 		if err != nil {
 			fmt.Println("db error:", err.Error())
@@ -223,7 +238,7 @@ func (s *Server) handleGetEmployees(w http.ResponseWriter, r *http.Request) erro
 
 	for rows.Next() {
 		var emp EmployeeOutput
-		err := rows.Scan(&emp.Id, &emp.Name, &emp.Email, &emp.CPF, &emp.AccessAllowed, &emp.Role.Id, &emp.Role.Name)
+		err := rows.Scan(&emp.Id, &emp.Name, &emp.Email, &emp.CPF, &emp.Role.Id, &emp.Role.Name, &emp.Role.AccessAllowed)
 	if err != nil {
 			fmt.Println("scan error:", err.Error())
 			return InternalError()
@@ -241,16 +256,9 @@ func (s *Server) handleGetEmployeeById(w http.ResponseWriter, r *http.Request) e
 		return BadRequest()
 	}
 
-	q := `SELECT e.employee_id, e.name e.email, e.cpf, e.access_allowed, r.role_id, r.name
-	FROM employee e JOIN employee_role r on e.role_id = r.role_id
-	WHERE e.employee_id = $1`
-
-	row := s.db.QueryRow(context.Background(), q, id)
-	
-	var emp EmployeeOutput
-	err = row.Scan(&emp.Id, &emp.Name, &emp.Email, &emp.CPF, &emp.AccessAllowed, &emp.Role.Id, &emp.Role.Name)
+	emp, err := s.getEmployee(id)
 	if err != nil {
-		return writeJSON(w, http.StatusOK, nil)
+		return NewAPIError(http.StatusNotFound, "employee does not exist")
 	}
 
 	return writeJSON(w, http.StatusOK, emp)
@@ -278,14 +286,14 @@ func (s *Server) handlePatchEmployeePermissions(w http.ResponseWriter, r *http.R
 	q = `
 	UPDATE employee e SET role_id = $1, access_allowed = TRUE
 	FROM employee_role r WHERE employee_id = $2
-	RETURNING e.employee_id, e.role_id, r.name, e.name, e.email, e.cpf, e.access_allowed
+	RETURNING e.employee_id, e.name, e.email, e.cpf, r.role_id, r.name, r.access_allowed
 	`
 
 	var emp EmployeeOutput
 	row = s.db.QueryRow(context.Background(), q, req.RoleId, employeeId)
 	err = row.Scan(
-		&emp.Id, &emp.Role.Id, &emp.Role.Name, &emp.Name,
-		&emp.Email, &emp.CPF, &emp.AccessAllowed)
+		&emp.Id, &emp.Name, &emp.Email, &emp.CPF,
+		&emp.Role.Id, &emp.Role.Name, &emp.Role.AccessAllowed)
 	
 	if err != nil {
 		return err
@@ -295,19 +303,34 @@ func (s *Server) handlePatchEmployeePermissions(w http.ResponseWriter, r *http.R
 }
 
 func (s *Server) getEmployeeAccess(employeeId int) (bool, error) {
-	q := `SELECT e.role_id FROM employee e WHERE e.employee_id = $1`
+	q := `
+	SELECT r.access_allowed FROM employee e
+	JOIN employee_role r ON e.role_id = r.role_id
+	WHERE e.employee_id = $1
+	`
 	row := s.db.QueryRow(context.Background(), q, employeeId)
 
-	var roleId int
-	err := row.Scan(&roleId)
+	var accessAllowed bool
+	err := row.Scan(&accessAllowed)
 	if err != nil {
 		return false, err
 	}
 
-	// NOTE considering 1 as admin (should change this later)
-	if (roleId != 1) {
-		return false, nil
+	return accessAllowed, nil
+}
+
+func (s *Server) getEmployee(id int) (EmployeeOutput, error) {
+	q := `SELECT e.employee_id, e.name, e.email, e.cpf, r.role_id, r.name, r.access_allowed
+	FROM employee e JOIN employee_role r on e.role_id = r.role_id
+	WHERE e.employee_id = $1`
+
+	row := s.db.QueryRow(context.Background(), q, id)
+
+	var emp EmployeeOutput
+	err := row.Scan(&emp.Id, &emp.Name, &emp.Email, &emp.CPF, &emp.Role.Id, &emp.Role.Name, &emp.Role.AccessAllowed)
+	if err != nil {
+		fmt.Println(err)
 	}
 
-	return true, nil
+	return emp, err
 }

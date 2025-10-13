@@ -1,4 +1,3 @@
-# TODO add endpoints for authorizing employees
 openapi: 3.1.1
 
 info:
@@ -273,6 +272,16 @@ paths:
                   message:
                     type: string
 
+        '404':
+          description: Employee does not exist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
     patch:
       summary: Change employees persmissions
       security:
@@ -337,6 +346,8 @@ paths:
                 properties:
                   token:
                     type: string
+                  employee:
+                    $ref: '#/components/schemas/Employee'
 
         '401':
           description: Failed to login (returns error message)
@@ -348,7 +359,6 @@ paths:
                   message:
                     type: string
 
-  # TODO creating employee should return both the token AND the employee
   /register:
     post:
       summary: Create employee account
@@ -578,8 +588,6 @@ components:
               type: integer
             role:
               $ref: '#/components/schemas/Role'
-            accessAllowed:
-              type: boolean
 
     Role:
       type: object
@@ -588,4 +596,6 @@ components:
           type: integer
         name:
           type: string
+        accessAllowed:
+          type: boolean
 
