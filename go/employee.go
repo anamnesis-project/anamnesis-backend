@@ -141,8 +141,6 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	// NOTE this query could be removed by fetching everything together with the password hash, but I don't care :)
 	resp.Employee, err = s.getEmployee(id)
 	if err != nil {
-		fmt.Println("fuck 0")
-		fmt.Println("id", id)
 		return NewAPIError(http.StatusUnauthorized, "authentication attempt failed")
 	}
 
@@ -283,18 +281,14 @@ func (s *Server) handlePatchEmployeePermissions(w http.ResponseWriter, r *http.R
 		return NewAPIError(http.StatusBadRequest, "selected role does not exist")
 	}
 
-	q = `
-	UPDATE employee e SET role_id = $1, access_allowed = TRUE
-	FROM employee_role r WHERE employee_id = $2
-	RETURNING e.employee_id, e.name, e.email, e.cpf, r.role_id, r.name, r.access_allowed
-	`
+	q = `UPDATE employee SET role_id = $1 WHERE employee_id = $2`
 
-	var emp EmployeeOutput
-	row = s.db.QueryRow(context.Background(), q, req.RoleId, employeeId)
-	err = row.Scan(
-		&emp.Id, &emp.Name, &emp.Email, &emp.CPF,
-		&emp.Role.Id, &emp.Role.Name, &emp.Role.AccessAllowed)
+	_, err = s.db.Exec(context.Background(), q, req.RoleId, employeeId)
+	if err != nil {
+		return err
+	}
 	
+	emp, err := s.getEmployee(employeeId)
 	if err != nil {
 		return err
 	}
