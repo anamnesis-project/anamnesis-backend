@@ -72,7 +72,7 @@ func ValidateCPF(cpf string) bool {
 	if secondVerifier >= 10 {
 		secondVerifier = 0
 	}
-	if ints[9] != secondVerifier {
+	if ints[10] != secondVerifier {
 		return false
 	}
 
