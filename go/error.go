@@ -49,6 +49,20 @@ func UserNotAuthenticated() APIError {
 	}
 }
 
+func InvalidToken() APIError {
+	return APIError{
+		StatusCode: http.StatusUnauthorized,
+		Msg: "Invalid Token",
+	}
+}
+
+func AccessNotAllowed() APIError {
+	return APIError{
+		StatusCode: http.StatusUnauthorized,
+		Msg: "You do not have the necessary permissions to access the requested content",
+	}
+}
+
 func NotImplemented() APIError {
 	return APIError{
 		StatusCode: http.StatusNotImplemented,

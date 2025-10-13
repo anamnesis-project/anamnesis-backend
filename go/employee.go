@@ -262,37 +262,15 @@ func (s *Server) handlePatchEmployeePermissions(w http.ResponseWriter, r *http.R
 		return BadRequest()
 	}
 
-	callerId, err := getIdFromToken(r)
-	if err != nil {
-		return  UserNotAuthenticated();
-	}
-	
-	q := `SELECT e.role_id FROM employee e WHERE e.employee_id = $1`
-	row := s.db.QueryRow(context.Background(), q, callerId)
-
-	var callerRoleId int
-	err = row.Scan(&callerRoleId)
-	if err != nil {
-		return BadRequest()
-	}
-
-	// NOTE considering id 1 as admin (should maybe change this)
-	if callerRoleId != 1 {
-		return APIError{
-			StatusCode: http.StatusUnauthorized,
-			Msg: "You do not have the necessary permissions",
-		}
-	}
-
 	var req PatchEmployeeRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return BadRequest()
 	}
 
-	q = `SELECT 1 FROM employee_role WHERE role_id = $1 LIMIT 1`
+	q := `SELECT 1 FROM employee_role WHERE role_id = $1 LIMIT 1`
 
-	row = s.db.QueryRow(context.Background(), q, req.RoleId)
+	row := s.db.QueryRow(context.Background(), q, req.RoleId)
 	if err = row.Scan(nil); err != nil {
 		return NewAPIError(http.StatusBadRequest, "selected role does not exist")
 	}
@@ -314,4 +292,22 @@ func (s *Server) handlePatchEmployeePermissions(w http.ResponseWriter, r *http.R
 	}
 
 	return writeJSON(w, http.StatusOK, emp)
+}
+
+func (s *Server) getEmployeeAccess(employeeId int) (bool, error) {
+	q := `SELECT e.role_id FROM employee e WHERE e.employee_id = $1`
+	row := s.db.QueryRow(context.Background(), q, employeeId)
+
+	var roleId int
+	err := row.Scan(&roleId)
+	if err != nil {
+		return false, err
+	}
+
+	// NOTE considering 1 as admin (should change this later)
+	if (roleId != 1) {
+		return false, nil
+	}
+
+	return true, nil
 }

@@ -47,7 +47,7 @@ type CustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-func jwtMiddleware(handler APIFunc) APIFunc {
+func (s *Server) jwtMiddleware(handler APIFunc) APIFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		var tokenString string
 		authHeader := r.Header.Get("Authorization")
@@ -56,7 +56,7 @@ func jwtMiddleware(handler APIFunc) APIFunc {
 		}
 		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
 
-		token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method")
 			}
@@ -64,12 +64,22 @@ func jwtMiddleware(handler APIFunc) APIFunc {
 		})
 
 		if err != nil || !token.Valid {
-			return writeJSON(w, http.StatusUnauthorized, "Invalid token")
+			return InvalidToken()
 		}
 
 		claims, ok := token.Claims.(*CustomClaims)
 		if !ok {
-			return writeJSON(w, http.StatusUnauthorized, "Invalid token")
+			return InvalidToken()
+		}
+
+		// contains database query for user permissions
+		accessAllowed, err := s.getEmployeeAccess(claims.UserId)
+		if err != nil {
+			return InvalidToken()
+		}
+
+		if !accessAllowed {
+			return AccessNotAllowed()
 		}
 
 		ctx := context.WithValue(r.Context(), userIdClaim, claims.UserId)
@@ -128,18 +138,18 @@ func NewServer(port string) *Server {
 
 	s.initDB()
 
-	http.HandleFunc("GET /reports", makeHandler(jwtMiddleware(s.handleGetReports)))
-	http.HandleFunc("GET /reports/{id}", makeHandler(jwtMiddleware(s.handleGetReportById)))
-	http.HandleFunc("GET /reports/{id}/pdf", makeHandler(jwtMiddleware(s.handleGetReportPDF)))
+	http.HandleFunc("GET /reports", makeHandler(s.jwtMiddleware(s.handleGetReports)))
+	http.HandleFunc("GET /reports/{id}", makeHandler(s.jwtMiddleware(s.handleGetReportById)))
+	http.HandleFunc("GET /reports/{id}/pdf", makeHandler(s.jwtMiddleware(s.handleGetReportPDF)))
 	http.HandleFunc("POST /reports", makeHandler(s.handleCreateReport))
 
-	http.HandleFunc("GET /patients", makeHandler(jwtMiddleware(s.handleGetPatients)))
-	http.HandleFunc("GET /patients/{id}", makeHandler(jwtMiddleware(s.handleGetPatientById)))
-	http.HandleFunc("GET /patients/{id}/reports", makeHandler(jwtMiddleware(s.handleGetPatientReports)))
+	http.HandleFunc("GET /patients", makeHandler(s.jwtMiddleware(s.handleGetPatients)))
+	http.HandleFunc("GET /patients/{id}", makeHandler(s.jwtMiddleware(s.handleGetPatientById)))
+	http.HandleFunc("GET /patients/{id}/reports", makeHandler(s.jwtMiddleware(s.handleGetPatientReports)))
 
-	http.HandleFunc("GET /employees", makeHandler(jwtMiddleware(s.handleGetEmployees)))
-	http.HandleFunc("GET /employees/{id}", makeHandler(jwtMiddleware(s.handleGetEmployeeById)))
-	http.HandleFunc("PATCH /employees/{id}", makeHandler(jwtMiddleware(s.handlePatchEmployeePermissions)))
+	http.HandleFunc("GET /employees", makeHandler(s.jwtMiddleware(s.handleGetEmployees)))
+	http.HandleFunc("GET /employees/{id}", makeHandler(s.jwtMiddleware(s.handleGetEmployeeById)))
+	http.HandleFunc("PATCH /employees/{id}", makeHandler(s.jwtMiddleware(s.handlePatchEmployeePermissions)))
 
 	http.HandleFunc("POST /login", makeHandler(s.handleLogin))
 	http.HandleFunc("POST /register", makeHandler(s.handleRegister))
