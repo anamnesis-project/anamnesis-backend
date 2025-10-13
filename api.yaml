@@ -460,7 +460,10 @@ components:
     ReportCreate:
       allOf:
         - $ref: '#/components/schemas/ReportBase'
-        - $ref: '#/components/schemas/PatientBase'
+        - type: object
+          properties:
+            patient:
+              $ref: '#/components/schemas/PatientBase'
 
     ReportValidationError:
       type: object

@@ -101,7 +101,7 @@ func (s *Server) handleGetPatientReports(w http.ResponseWriter, r *http.Request)
 		var r ReportOutput
 		r.Patient = p
 		err := rows.Scan(
-			&r.Id, &r.Height, &r.Height,
+			&r.Id, &r.Weight, &r.Height,
 			&r.HeartRate, &r.SystolicPressure, &r.DiastolicPressure,
 			&r.Temperature, &r.OxygenSaturation,
 			&r.Interview, &r.IssuedAt)

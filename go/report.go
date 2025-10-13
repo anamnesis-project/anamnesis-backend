@@ -1,11 +1,14 @@
 package main
 
 import (
-	"time"
-	"encoding/json"
-	"net/http"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type ReportOutput struct {
@@ -119,7 +122,7 @@ func (s *Server) handleGetReports(w http.ResponseWriter, r *http.Request) error 
 	for rows.Next() {
 		var r ReportOutput
 		err := rows.Scan(
-			&r.Id, &r.Height, &r.Height,
+			&r.Id, &r.Weight, &r.Height,
 			&r.HeartRate, &r.SystolicPressure, &r.DiastolicPressure,
 			&r.Temperature, &r.OxygenSaturation,
 			&r.Interview, &r.IssuedAt,
@@ -154,18 +157,23 @@ func (s *Server) handleGetReportById(w http.ResponseWriter, r *http.Request) err
 	row := s.db.QueryRow(context.Background(), q, id)
 	
 	var rep ReportOutput
-	err = row.Scan(&rep.Id, &rep.Height, &rep.Height,
-			&rep.HeartRate, &rep.SystolicPressure, &rep.DiastolicPressure,
-			&rep.Temperature, &rep.OxygenSaturation,
-			&rep.Interview, &rep.IssuedAt,
-			&rep.Patient.Id, &rep.Patient.Name, &rep.Patient.CPF,
-			&rep.Patient.Sex, &rep.Patient.DateOfBirth)
+	err = row.Scan(
+		&rep.Id, &rep.Weight, &rep.Height,
+		&rep.HeartRate, &rep.SystolicPressure, &rep.DiastolicPressure,
+		&rep.Temperature, &rep.OxygenSaturation,
+		&rep.Interview, &rep.IssuedAt,
+		&rep.Patient.Id, &rep.Patient.Name, &rep.Patient.CPF,
+		&rep.Patient.Sex, &rep.Patient.DateOfBirth)
 
 	if err != nil {
-		return writeJSON(w, http.StatusOK, nil)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return NewAPIError(http.StatusNotFound, "report does not exist")
+		}
+
+		return err
 	}
 
-	return writeJSON(w, http.StatusOK, r)
+	return writeJSON(w, http.StatusOK, rep)
 }
 
 // TODO implement
