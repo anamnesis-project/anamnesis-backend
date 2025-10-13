@@ -193,7 +193,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 		Employee: emp,
 	}
 	
-	return writeJSON(w, http.StatusOK, response)
+	return writeJSON(w, http.StatusCreated, response)
 }
 
 func (s *Server) handleGetEmployees(w http.ResponseWriter, r *http.Request) error {

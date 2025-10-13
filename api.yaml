@@ -369,8 +369,20 @@ paths:
                 properties:
                   token:
                     type: string
-        '400':
+                  employee:
+                    $ref: '#/components/schemas/Employee'
+        '422':
           description: Field validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    $ref: '#/components/schemas/EmployeeValidationError'
+
+        '409':
+          description: Email or CPF already taken
           content:
             application/json:
               schema:
@@ -448,6 +460,50 @@ components:
           type: array
           items:
             type: string
+        cpf:
+          type: array
+          items:
+            type: string
+        sex:
+          type: array
+          items:
+            type: string
+        dateOfBirth:
+          type: array
+          items:
+            type: string
+        weight:
+          type: array
+          items:
+            type: string
+        height:
+          type: array
+          items:
+            type: string
+        heartRate:
+          type: array
+          items:
+            type: string
+        systolicPressure:
+          type: array
+          items:
+            type: string
+        diastolicPressure:
+          type: array
+          items:
+            type: string
+        temperature:
+          type: array
+          items:
+            type: string
+        saturation:
+          type: array
+          items:
+            type: string
+        interview:
+          type: array
+          items:
+            type: string
 
     PatientBase:
       type: object
@@ -491,6 +547,27 @@ components:
             password:
               type: string
               maxLength: 72
+
+    EmployeeValidationError:
+      type: object
+      # May contain one or more of the properties
+      properties:
+        name:
+          type: array
+          items:
+            type: string
+        cpf:
+          type: array
+          items:
+            type: string
+        email:
+          type: array
+          items:
+            type: string
+        password:
+          type: array
+          items:
+            type: string
 
     Employee:
       allOf:

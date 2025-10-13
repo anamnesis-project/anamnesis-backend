@@ -227,5 +227,5 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	rep.Patient = patient
-	return writeJSON(w, http.StatusOK, rep)
+	return writeJSON(w, http.StatusCreated, rep)
 }
