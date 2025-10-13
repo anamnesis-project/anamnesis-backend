@@ -65,7 +65,7 @@ func (s *Server) handleGetPatientById(w http.ResponseWriter, r *http.Request) er
 	var p PatientOutput
 	err = row.Scan(&p.Id, &p.Name, &p.CPF, &p.Sex, &p.DateOfBirth)
 	if err != nil {
-		return writeJSON(w, http.StatusOK, nil)
+		return NewAPIError(http.StatusNotFound, "patient does not exist")
 	}
 
 	return writeJSON(w, http.StatusOK, p)
@@ -83,7 +83,7 @@ func (s *Server) handleGetPatientReports(w http.ResponseWriter, r *http.Request)
 	row := s.db.QueryRow(context.Background(), q, patientId)
 	err = row.Scan(&p.Id, &p.Name, &p.CPF, &p.Sex, &p.DateOfBirth)
 		if err != nil {
-			return BadRequest()
+			return NewAPIError(http.StatusNotFound, "patient does not exist")
 		}
 
 	q = `SELECT r.report_id, r.weight, r.height, r.heart_rate,
@@ -99,6 +99,7 @@ func (s *Server) handleGetPatientReports(w http.ResponseWriter, r *http.Request)
 	reports := make([]ReportOutput, 0)
 	for rows.Next() {
 		var r ReportOutput
+		r.Patient = p
 		err := rows.Scan(
 			&r.Id, &r.Height, &r.Height,
 			&r.HeartRate, &r.SystolicPressure, &r.DiastolicPressure,
