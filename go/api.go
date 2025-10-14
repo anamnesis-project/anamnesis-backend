@@ -151,6 +151,9 @@ func NewServer(port string) *Server {
 	http.HandleFunc("GET /employees/{id}", makeHandler(s.jwtMiddleware(s.handleGetEmployeeById)))
 	http.HandleFunc("PATCH /employees/{id}", makeHandler(s.jwtMiddleware(s.handlePatchEmployeePermissions)))
 
+	http.HandleFunc("GET /roles", makeHandler(s.jwtMiddleware(s.handleGetRoles)))
+	http.HandleFunc("GET /roles/{id}", makeHandler(s.jwtMiddleware(s.handleGetRoleById)))
+
 	http.HandleFunc("POST /login", makeHandler(s.handleLogin))
 	http.HandleFunc("POST /register", makeHandler(s.handleRegister))
 

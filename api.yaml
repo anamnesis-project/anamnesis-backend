@@ -401,6 +401,61 @@ paths:
                   message:
                     type: string
 
+  /roles:
+    get:
+      summary: Get all roles
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Roles fetched successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /roles/{id}:
+    get:
+      summary: Get Role By Id
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Role fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+
+        '404':
+          description: Role does not exist
+        '401':
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
 ##############################################
 
 components:

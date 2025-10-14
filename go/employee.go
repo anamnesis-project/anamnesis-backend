@@ -38,12 +38,6 @@ type EmployeeOutput struct {
 	Role          Role   `json:"role"`
 }
 
-type Role struct {
-	Id            int    `json:"id"`
-	Name          string `json:"name"`
-	AccessAllowed bool   `json:"accessAllowed"`
-}
-
 type RegisterRequest struct {
 	EmployeeInput
 }
@@ -212,10 +206,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) handleGetEmployees(w http.ResponseWriter, r *http.Request) error {
 	q := `SELECT e.employee_id, e.name, e.email, e.cpf, r.role_id, r.name, r.access_allowed
 	FROM employee e JOIN employee_role r on e.role_id = r.role_id`
-	var rows pgx.Rows
 
 	queryParams := r.URL.Query()
 	accessAllowedFilter, err := strconv.ParseBool(queryParams.Get("accessAllowed"))
+
+	var rows pgx.Rows
 	// err means there is no filter applied
 	if err != nil {
 		rows, err = s.db.Query(context.Background(), q)
