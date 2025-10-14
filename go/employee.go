@@ -31,11 +31,11 @@ type EmployeeInput struct {
 }
 
 type EmployeeOutput struct {
-	Id            int    `json:"id"`
-	Name          string `json:"name"`
-	Email         string `json:"email"`
-	CPF           string `json:"cpf"`
-	Role          Role   `json:"role"`
+	Id    int    `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	CPF   string `json:"cpf"`
+	Role  Role   `json:"role"`
 }
 
 type RegisterResponse struct {
