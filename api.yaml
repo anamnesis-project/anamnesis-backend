@@ -359,6 +359,16 @@ paths:
                   message:
                     type: string
 
+        '422':
+          description: Field validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    $ref: '#/components/schemas/LoginValidationError'
+
   /register:
     post:
       summary: Create employee account
@@ -646,6 +656,19 @@ components:
               type: integer
             role:
               $ref: '#/components/schemas/Role'
+
+    LoginValidationError:
+      type: object
+      # May contain one or more of the properties
+      properties:
+        cpf:
+          type: array
+          items:
+            type: string
+        password:
+          type: array
+          items:
+            type: string
 
     Role:
       type: object

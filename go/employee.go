@@ -38,15 +38,6 @@ type EmployeeOutput struct {
 	Role          Role   `json:"role"`
 }
 
-type RegisterRequest struct {
-	EmployeeInput
-}
-
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 type RegisterResponse struct {
 	Token string     `json:"token"`
 	Employee  EmployeeOutput `json:"employee"`
@@ -55,6 +46,10 @@ type RegisterResponse struct {
 type EmployeeLoginResponse struct {
 	Token string `json:"token"`
 	Employee  EmployeeOutput `json:"employee"`
+}
+
+type RegisterRequest struct {
+	EmployeeInput
 }
 
 func (r RegisterRequest) validate() map[string][]string {
@@ -100,6 +95,46 @@ func (r RegisterRequest) validate() map[string][]string {
 	return errs
 }
 
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (r LoginRequest) validate() map[string][]string {
+	errs := make(map[string][]string)
+
+	if len(r.Password) > 72 {
+		errs["password"] = append(errs["password"], "password must not exceed 72 characters")
+	}
+
+	if len(r.Password) < 12 {
+		errs["password"] = append(errs["password"], "password must be at least 12 characters long")
+	}
+
+	if !ContainsNumber(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain a number")
+	}
+
+	if !ContainsLowerCaseLetter(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain a lower case letter")
+	}
+
+	if !ContainsUpperCaseLetter(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain an upper case letter")
+	}
+
+	if !ContainsSpecialCharacter(r.Password) {
+		errs["password"] = append(errs["password"], "password must contain at least 1 special character")
+	}
+
+	_, err := mail.ParseAddress(r.Email)
+	if err != nil {
+		errs["email"] = append(errs["email"], "email is invalid")
+	}
+
+	return errs
+}
+
 type PatchEmployeeRequest struct {
 	RoleId int `json:"roleId"`
 }
@@ -109,6 +144,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return BadRequest()
+	}
+
+	errs := req.validate()
+	if len(errs) > 0 {
+		return NewAPIError(http.StatusUnprocessableEntity, errs)
 	}
 
 	q := `SELECT u.password_hash, u.employee_id FROM employee u WHERE u.email = $1`
