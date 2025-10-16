@@ -1,22 +1,18 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from tts import TextToSpeech
+from stt import SpeechToText
 from typing import List
-import queuex   
-from vosk import Model, KaldiRecognizer
+import asyncio
 
 app = FastAPI()
-stt_model = Model(lang="en-us", model_path="./model/vosk-model-en-us-0.22")
 TTSEngine = TextToSpeech()
+STTEngine = SpeechToText()
+
+FINAL_SENTENCE_TIMEOUT = 1.5
 
 @app.get("/")
 def root():
     return {"message": "Hello from REST API"}
-
-
-# @app.get("/items/{item_id}")
-# def read_item(item_id: int, q: str | None = None):
-#     return {"item_id": item_id, "q": q}
-
 
 class ConnectionManager:
     def __init__(self):
@@ -49,30 +45,53 @@ async def websocket_tts(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-
 @app.websocket("/ws/stt")
 async def websocket_stt(websocket: WebSocket):
-    q = queue.Queue()
-    listening = False
-
     await manager.connect(websocket)
+    recognizer = STTEngine.create_recognizer()
+    if not recognizer:
+        return
+
+    sentence_parts = []
+    timeout_task = None
+    print("\STT Client conected. Waiting for message...")
+
+    async def send_final_sentence():
+        nonlocal sentence_parts
+        if sentence_parts:
+            final_sentence = " ".join(sentence_parts)
+            print(f"STT Final sentence: '{final_sentence}'")
+            await manager.send_message(final_sentence, websocket)
+            sentence_parts = []
+
     try:
         while True:
-            msg = await websocket.receive()
-            if msg["type"] != "websocket.receive":
-                continue
+            audio_chunk = await websocket.receive_bytes()
+            print(f"SERVER got {len(audio_chunk)} bytes of audio.", end='\r')
 
-            if "text" in msg:
-                '''
-                    Parse text as json (start or end + sample rate)
-                '''
-                # if msg == "start":
-                #     listening = True
-                # elif msg == "end":
-                #     listening = False
-            elif "bytes" in msg:
-                # send bytes to transcriber
+            if recognizer.AcceptWaveform(audio_chunk):
+                result_json = recognizer.Result()
+                partial_text = STTEngine.process_final_result(result_json)
+                
+                print(f"\STT partial: '{partial_text}'")
+                
+                if partial_text:
+                    sentence_parts.append(partial_text)
 
-            await manager.send_message(f"You wrote: {data}", websocket)
+                    if timeout_task:
+                        timeout_task.cancel()
+
+                    timeout_task = asyncio.create_task(asyncio.sleep(FINAL_SENTENCE_TIMEOUT))
+                    
+                    try:
+                        await timeout_task
+                        await send_final_sentence()
+                    except asyncio.CancelledError:
+                        continue
     except WebSocketDisconnect:
+        await send_final_sentence()
+        print("\nSTT client disconected.")
+        manager.disconnect(websocket)
+    except Exception as e:
+        print(f"\nError: STT conection failed: {e}")
         manager.disconnect(websocket)
