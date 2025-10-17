@@ -88,6 +88,66 @@ paths:
                 properties:
                   message:
                     type: string
+    patch:
+      summary: Change report urgency
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                urgency:
+                  $ref: '#/components/schemas/Urgency'
+
+      responses:
+        '200':
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+
+        '401':
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /reports/{id}/consultation:
+    post:
+      security:
+        - BearerAuth: []
+      summary: Add consultation
+      responses:
+        '200':
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+
+        '401':
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
 
   /reports/{id}/pdf:
     get:
@@ -521,6 +581,10 @@ components:
             issuedAt:
               type: string
               format: date-time
+            urgency:
+              $ref: '#/components/schemas/Urgency'
+            consultation:
+              $ref: '#/components/schemas/Consultation'
 
     ReportCreate:
       allOf:
@@ -680,3 +744,19 @@ components:
         accessAllowed:
           type: boolean
 
+    Urgency:
+      type: string
+      enum:
+        - undefined
+        - green
+        - yellow
+        - red
+
+    Consultation:
+      type: object
+      properties:
+        doctorId:
+          type: integer
+        consultationDate:
+          type: string
+          format: date-time

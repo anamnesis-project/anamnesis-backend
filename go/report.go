@@ -11,39 +11,48 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+type Urgency string
+const (
+	Undefined Urgency = "undefined"
+	Green     Urgency = "green"
+	Yellow    Urgency = "Yellow"
+	Red       Urgency = "red"
+)
+
+type ReportBase struct {
+	Weight            float32 `json:"weight"`
+	Height            int     `json:"height"`
+	HeartRate         int     `json:"heartRate"`
+	SystolicPressure  int     `json:"systolicPressure"`
+	DiastolicPressure int     `json:"diastolicPressure"`
+	Temperature       float32 `json:"temperature"`
+	OxygenSaturation  int     `json:"oxygenSaturation"`
+	Interview         []QA    `json:"interview"`
+}
+
 type ReportOutput struct {
-	Id                int           `json:"id"`
-	Patient           PatientOutput `json:"patient"`
-	Weight            float32       `json:"weight"`
-	Height            int           `json:"height"`
-	HeartRate         int           `json:"heartRate"`
-	SystolicPressure  int           `json:"systolicPressure"`
-	DiastolicPressure int           `json:"diastolicPressure"`
-	Temperature       float32       `json:"temperature"`
-	OxygenSaturation  int           `json:"oxygenSaturation"`
-	Interview         []QA          `json:"interview"`
-	IssuedAt          time.Time     `json:"issuedAt"`
-}
-
-type CreateReportRequest struct {
-	Patient           PatientInput `json:"patient"`
-	Weight            float32      `json:"weight"`
-	Height            int          `json:"height"`
-	HeartRate         int          `json:"heartRate"`
-	SystolicPressure  int          `json:"systolicPressure"`
-	DiastolicPressure int          `json:"diastolicPressure"`
-	Temperature       float32      `json:"temperature"`
-	OxygenSaturation  int          `json:"oxygenSaturation"`
-	Interview         []QA         `json:"interview"`
-}
-
-type TestRequest struct {
-	Interview []QA `json:"interview"`
+	Id           int           `json:"id"`
+	Patient      PatientOutput `json:"patient"`
+	ReportBase
+	IssuedAt     time.Time     `json:"issuedAt"`
+	Urgency      Urgency       `json:"urgency"`
+	Consultation *Consultation `json:"consultation,omitempty"`
 }
 
 type QA struct {
 	Question string `json:"question"`
 	Answer   string `json:"answer"`
+}
+
+type Consultation struct {
+	DoctorId         int       `json:"doctorId,omitempty"`
+	// using time.Time as pointer is a workaround to make sure no json parsing when zero value is given
+	ConsultationDate *time.Time `json:"consultationDate,omitempty"`
+}
+
+type CreateReportRequest struct {
+	ReportBase
+	Patient PatientInput `json:"patient"`
 }
 
 func (r CreateReportRequest) validate() map[string][]string {
@@ -104,12 +113,31 @@ func (r CreateReportRequest) validate() map[string][]string {
 	return errs
 }
 
+type ChangeUrgencyRequest struct {
+	Urgency Urgency `json:"urgency"`
+}
+
+func (r ChangeUrgencyRequest) validate() map[string][]string {
+	errs := make(map[string][]string)
+	if r.Urgency != Undefined &&
+	r.Urgency != Green &&
+	r.Urgency != Yellow &&
+	r.Urgency != Red {
+		errs["urgency"] = append(errs["urgency"], "invalid urgency type")
+	}
+
+	return errs
+}
+
 func (s *Server) handleGetReports(w http.ResponseWriter, r *http.Request) error {
 	q := `SELECT r.report_id, r.weight, r.height, r.heart_rate,
 	r.systolic_pressure, r.diastolic_pressure, r.temperature,
 	r.oxygen_saturation, r.interview, r.issued_at,
-	p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth
-	FROM report r JOIN patient p on r.patient_id = p.patient_id`
+	p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth,
+	r.urgency, (c.report_id IS NOT NULL) AS consulted
+	FROM report r JOIN patient p on r.patient_id = p.patient_id
+	LEFT JOIN consultation c on r.report_id = c.report_id
+	`
 
 	output := make([]ReportOutput, 0)
 	rows, err := s.db.Query(context.Background(), q)
@@ -121,24 +149,29 @@ func (s *Server) handleGetReports(w http.ResponseWriter, r *http.Request) error 
 
 	for rows.Next() {
 		var r ReportOutput
+		var consulted bool
 		err := rows.Scan(
 			&r.Id, &r.Weight, &r.Height,
 			&r.HeartRate, &r.SystolicPressure, &r.DiastolicPressure,
 			&r.Temperature, &r.OxygenSaturation,
 			&r.Interview, &r.IssuedAt,
 			&r.Patient.Id, &r.Patient.Name, &r.Patient.CPF,
-			&r.Patient.Sex, &r.Patient.DateOfBirth)
+			&r.Patient.Sex, &r.Patient.DateOfBirth,
+			&r.Urgency, &consulted)
 
 		if err != nil {
 			fmt.Println("scan error:", err.Error())
 			return InternalError()
 		}
 
+		if consulted {
+			r.Consultation, err = s.getConsultation(r.Id)
+		}
+
 		output = append(output, r)
 	}
 
 	return writeJSON(w, http.StatusOK, output)
-
 }
 
 func (s *Server) handleGetReportById(w http.ResponseWriter, r *http.Request) error {
@@ -147,24 +180,7 @@ func (s *Server) handleGetReportById(w http.ResponseWriter, r *http.Request) err
 		return BadRequest()
 	}
 
-	q := `SELECT r.report_id, r.weight, r.height, r.heart_rate,
-	r.systolic_pressure, r.diastolic_pressure, r.temperature,
-	r.oxygen_saturation, r.interview, r.issued_at,
-	p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth
-	FROM report r JOIN patient p on r.patient_id = p.patient_id
-	WHERE r.report_id = $1`
-
-	row := s.db.QueryRow(context.Background(), q, id)
-	
-	var rep ReportOutput
-	err = row.Scan(
-		&rep.Id, &rep.Weight, &rep.Height,
-		&rep.HeartRate, &rep.SystolicPressure, &rep.DiastolicPressure,
-		&rep.Temperature, &rep.OxygenSaturation,
-		&rep.Interview, &rep.IssuedAt,
-		&rep.Patient.Id, &rep.Patient.Name, &rep.Patient.CPF,
-		&rep.Patient.Sex, &rep.Patient.DateOfBirth)
-
+	rep, err := s.getReportById(id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return NewAPIError(http.StatusNotFound, "report does not exist")
@@ -181,6 +197,94 @@ func (s *Server) handleGetReportById(w http.ResponseWriter, r *http.Request) err
 func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) error {
 
 	return NotImplemented()
+}
+
+func (s *Server) handleChangeReportUrgency(w http.ResponseWriter, r *http.Request) error {
+	employeeId, err := getIdFromToken(r)
+	if err != nil {
+		return InvalidToken()
+	}
+
+	validPermissions, err := s.getEmployeeAccess(employeeId)
+	if err != nil {
+		return InternalError()
+	}
+
+	if !validPermissions {
+		return AccessNotAllowed()
+	}
+
+	reportId, err := getPathId("id", r)
+	if err != nil {
+		return BadRequest()
+	}
+
+	var req ChangeUrgencyRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return BadRequest()
+	}
+
+	errs := req.validate()
+	if len(errs) > 0 {
+		return NewAPIError(http.StatusUnprocessableEntity, errs)
+	}
+
+	q := `UPDATE report SET urgency = $1 WHERE report_id = $2`
+	_, err = s.db.Exec(context.Background(), q, req.Urgency, reportId)
+	if err != nil {
+		return err
+	}
+
+	rep, err := s.getReportById(reportId)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, http.StatusOK, rep)
+}
+
+func (s *Server) handleCreateConsultation(w http.ResponseWriter, r *http.Request) error {
+	employeeId, err := getIdFromToken(r)
+	if err != nil {
+		fmt.Println("here")
+		return InvalidToken()
+	}
+
+	validPermissions, err := s.getEmployeeAccess(employeeId)
+	if err != nil {
+		return InternalError()
+	}
+
+	if !validPermissions {
+		return AccessNotAllowed()
+	}
+
+	reportId, err := getPathId("id", r)
+	if err != nil {
+		return BadRequest()
+	}
+
+	rep, err := s.getReportById(reportId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return NewAPIError(http.StatusBadRequest, "report does not exist")
+		}
+	}
+
+	now := time.Now()
+	q := `INSERT INTO consultation(report_id, doctor_id, consultation_date) VALUES($1, $2, $3)`
+	_, err = s.db.Exec(context.Background(), q, reportId, employeeId, now)
+	if err != nil {
+		return err
+	}
+
+	rep.Consultation = &Consultation{
+		DoctorId: employeeId,
+		ConsultationDate: &now,
+	}
+
+	return writeJSON(w, http.StatusOK, rep)
 }
 
 func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) error {
@@ -236,4 +340,40 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 
 	rep.Patient = patient
 	return writeJSON(w, http.StatusCreated, rep)
+}
+
+func (s *Server) getReportById(id int) (ReportOutput, error) {
+	q := `
+	SELECT r.report_id, r.weight, r.height, r.heart_rate,
+	r.systolic_pressure, r.diastolic_pressure, r.temperature,
+	r.oxygen_saturation, r.interview, r.issued_at,
+	p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth,
+	r.urgency, (c.report_id IS NOT NULL) AS consulted
+	FROM report r JOIN patient p on r.patient_id = p.patient_id
+	LEFT JOIN consultation c on r.report_id = c.report_id
+	WHERE r.report_id = $1
+	`
+
+	row := s.db.QueryRow(context.Background(), q, id)
+	var rep ReportOutput
+	var consulted bool
+	err := row.Scan(&rep.Id, &rep.Weight, &rep.Height, &rep.HeartRate, &rep.SystolicPressure, &rep.DiastolicPressure,
+		&rep.Temperature, &rep.OxygenSaturation, &rep.Interview, &rep.IssuedAt,
+		&rep.Patient.Id, &rep.Patient.Name, &rep.Patient.CPF, &rep.Patient.Sex, &rep.Patient.DateOfBirth,
+		&rep.Urgency, &consulted)
+
+	if consulted {
+		rep.Consultation, err = s.getConsultation(id)
+	}
+
+	return rep, err
+}
+
+func (s *Server) getConsultation(reportId int) (*Consultation, error) {
+	var c Consultation
+	q := `SELECT c.doctor_id, c.consultation_date FROM consultation c WHERE report_id = $1`
+	row := s.db.QueryRow(context.Background(), q, reportId)
+	err := row.Scan(&c.DoctorId, &c.ConsultationDate)
+
+	return &c, err
 }

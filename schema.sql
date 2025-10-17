@@ -7,6 +7,8 @@ CREATE TABLE patient (
     sex           CHAR(1) NOT NULL CHECK (sex IN ('M','F'))
 );
 
+CREATE TYPE URGENCY AS ENUM ('undefined', 'green', 'yellow', 'red');
+
 CREATE TABLE report (
     report_id          SERIAL PRIMARY KEY,
     patient_id         INTEGER NOT NULL REFERENCES patient,
@@ -18,7 +20,8 @@ CREATE TABLE report (
     temperature        NUMERIC(3, 1),
     oxygen_saturation  INTEGER,
     interview          JSONB,
-    issued_at          TIMESTAMP NOT NULL
+    issued_at          TIMESTAMP NOT NULL,
+    urgency            URGENCY DEFAULT 'undefined'
 );
 
 CREATE TABLE employee_role (
@@ -36,3 +39,8 @@ CREATE TABLE employee (
     password_hash  VARCHAR(60) NOT NULL
 );
 
+CREATE TABLE consultation (
+    report_id         INTEGER PRIMARY KEY REFERENCES report(report_id),
+    doctor_id         INTEGER NOT NULL REFERENCES employee,
+    consultation_date TIMESTAMP NOT NULL
+);
