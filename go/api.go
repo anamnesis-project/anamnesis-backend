@@ -16,6 +16,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const (
+	BYPASS_JWT_MIDDLEWARE = false
+)
+
 type APIFunc func(w http.ResponseWriter, r *http.Request) error
 
 type TokenClaim string
@@ -48,6 +52,10 @@ type CustomClaims struct {
 }
 
 func (s *Server) jwtMiddleware(handler APIFunc) APIFunc {
+	if BYPASS_JWT_MIDDLEWARE {
+		return handler
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) error {
 		var tokenString string
 		authHeader := r.Header.Get("Authorization")
