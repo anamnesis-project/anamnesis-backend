@@ -193,11 +193,11 @@ func (s *Server) initDB() {
 	var err error
 	s.db, err = pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		log.Fatalf("error creating database connection pool", err)
+		log.Fatal("error creating database connection pool", err)
 	}
 
 	if err = s.db.Ping(context.Background()); err != nil {
-		log.Fatalf("error conecting to database", err)
+		log.Fatal("error conecting to database", err)
 	}
 
 	fmt.Println("database connected")
