@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -178,12 +179,26 @@ func (s *Server) Run() {
 }
 
 func (s *Server) initDB() {
+	_ = godotenv.Load()
+
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		dbURL = os.Getenv("DATABASE_URL")
+	}
+
+	if dbURL == "" {
+		log.Fatal("unable to retreive database url from enviromnent variables")
+	}
+
 	var err error
-	s.db, err = pgxpool.New(context.Background(), os.Getenv("DB_URL"))
+	s.db, err = pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error creating database connection pool", err)
 	}
+
 	if err = s.db.Ping(context.Background()); err != nil {
-		log.Fatal(err)
+		log.Fatalf("error conecting to database", err)
 	}
+
+	fmt.Println("database connected")
 }
