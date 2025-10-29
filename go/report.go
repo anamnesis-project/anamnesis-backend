@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/signintech/gopdf"
 )
 
 type Urgency string
+
 const (
 	Undefined Urgency = "undefined"
 	Green     Urgency = "green"
@@ -195,8 +197,96 @@ func (s *Server) handleGetReportById(w http.ResponseWriter, r *http.Request) err
 // TODO implement
 // NOTE (Murilo) thinking about using this library https://github.com/signintech/gopdf
 func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) error {
+	id, err := getPathId("id", r)
+	if err != nil {
+		return BadRequest()
+	}
 
-	return NotImplemented()
+	rep, err := s.getReportById(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return NewAPIError(http.StatusNotFound, "report does not exist")
+		}
+
+		return err
+	}
+
+	pdf := gopdf.GoPdf{}
+	pdf.Start(gopdf.Config{ PageSize: *gopdf.PageSizeA4 })
+	pdf.AddPage()
+	pdf.SetMarginLeft(100)
+	pdf.SetMarginRight(100)
+	err = pdf.AddTTFFont("arial", "../fonts/arial/ARIAL.TTF")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	err = pdf.SetFont("arial", "", 14)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	pdf.SetFontSize(24)
+	pdf.SetXY(pdf.MarginLeft(), 50)
+	pdf.Text(rep.Patient.Name)
+	// W: 595, H: 842
+	pdf.SetFontSize(12)
+	pdf.SetXY(pdf.MarginLeft(), 60)
+	rect := gopdf.Rect{ W: 100, H: 32 }
+	pdf.Cell(&rect, fmt.Sprintf("Sex: %s", rep.Patient.Sex))
+	pdf.Cell(&rect, fmt.Sprintf("Date of Birth: %s", rep.Patient.DateOfBirth.Format("02/01/2006")))
+
+	pdf.SetXY(400, 70)
+	pdf.Text(fmt.Sprintf("Issued at: %s", rep.IssuedAt.Format("02/01/2006")))
+
+	y := 100.0
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.Text(fmt.Sprintf("Urgency: %s", rep.Urgency))
+	y += 20
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.Text(fmt.Sprintf("Height: %.2f m", float32(rep.Height / 100)))
+	y += 20
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.Text(fmt.Sprintf("Weight: %.1f Kg", rep.Weight))
+	y += 20
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.Text(fmt.Sprintf("Heart Rate: %d BPM", rep.HeartRate))
+	y += 20
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.Text(fmt.Sprintf("Oxygen Saturation: %d%%", rep.OxygenSaturation))
+	y += 20
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.Text(fmt.Sprintf("Temperature: %.1f °C", rep.Temperature))
+	y += 20
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.Text(fmt.Sprintf("Blood pressure: %d/%d", rep.SystolicPressure, rep.DiastolicPressure))
+	y += 36
+
+	pdf.SetXY(pdf.MarginLeft(), y)
+	pdf.SetFontSize(20)
+	pdf.Text("Interview")
+	y += 16
+	pdf.SetFontSize(12)
+
+	for _, qa := range rep.Interview {
+		pdf.SetXY(pdf.MarginLeft(), y)
+		pdf.Text(fmt.Sprintf("Question: %s", qa.Question))
+		y += 20
+
+		pdf.SetXY(pdf.MarginLeft(), y)
+		pdf.Text(fmt.Sprintf("Answer: %s", qa.Answer))
+		y += 32
+	}
+
+	return writePDF(w, &pdf)
 }
 
 func (s *Server) handleChangeReportUrgency(w http.ResponseWriter, r *http.Request) error {

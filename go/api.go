@@ -15,6 +15,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/signintech/gopdf"
 )
 
 const (
@@ -138,6 +139,12 @@ func writeJSON(w http.ResponseWriter, status int, data any) error {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(data)
+}
+
+func writePDF(w http.ResponseWriter, pdf *gopdf.GoPdf) error {
+	w.Header().Add("Content-Type", "application/pdf")
+	_, err := pdf.WriteTo(w)
+	return err
 }
 
 func getPathId(wildcard string, r *http.Request) (int, error) {
