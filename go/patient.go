@@ -59,7 +59,7 @@ func (s *Server) handleGetPatientById(w http.ResponseWriter, r *http.Request) er
 		return BadRequest()
 	}
 
-	q := `SELECT p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth FROM patient p WHERE r.patient_id = $1`
+	q := `SELECT p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth FROM patient p WHERE p.patient_id = $1`
 	row := s.db.QueryRow(context.Background(), q, id)
 	
 	var p PatientOutput
