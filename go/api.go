@@ -32,7 +32,8 @@ func makeHandler(handler APIFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Request from %s\t%s %s\n", r.RemoteAddr, r.Method, r.URL.Path)
 
-		err := handler(w, r)
+		handlerWithCors := corsMiddleware(handler)
+		err := handlerWithCors(w, r)
 		if err != nil {
 			if e, ok := err.(APIError); ok {
 				fmt.Println("API error:", e.Msg)
@@ -50,6 +51,20 @@ var jwtSecret = []byte("TODO: stop using me")
 type CustomClaims struct {
 	UserId int `json:"user_id"`
 	jwt.RegisteredClaims
+}
+
+func corsMiddleware(handler APIFunc) APIFunc {
+    return func(w http.ResponseWriter, r *http.Request) error {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return nil
+        }
+
+		return handler(w, r)
+    }
 }
 
 func (s *Server) jwtMiddleware(handler APIFunc) APIFunc {
