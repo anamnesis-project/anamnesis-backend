@@ -22,14 +22,14 @@ const (
 )
 
 type ReportBase struct {
-	Weight            float32 `json:"weight"`
-	Height            int     `json:"height"`
-	HeartRate         int     `json:"heartRate"`
-	SystolicPressure  int     `json:"systolicPressure"`
-	DiastolicPressure int     `json:"diastolicPressure"`
-	Temperature       float32 `json:"temperature"`
-	OxygenSaturation  int     `json:"oxygenSaturation"`
-	Interview         []QA    `json:"interview"`
+	Weight             float32 `json:"weight"`
+	Height             int     `json:"height"`
+	HeartRate         *int     `json:"heartRate"`
+	SystolicPressure  *int     `json:"systolicPressure"`
+	DiastolicPressure *int     `json:"diastolicPressure"`
+	Temperature       *float32 `json:"temperature"`
+	OxygenSaturation  *int     `json:"oxygenSaturation"`
+	Interview         []QA     `json:"interview"`
 }
 
 type ReportOutput struct {
@@ -84,28 +84,30 @@ func (r CreateReportRequest) validate() map[string][]string {
 		errs["height"] = append(errs["height"], "height must be greater than 0 cm")
 	}
 
-	if r.HeartRate < 0 {
+	if r.HeartRate != nil && *r.HeartRate < 0 {
 		errs["heartRate"] = append(errs["heartRate"], "heart rate must be greater than 0 bpm")
 	}
 
-	if r.SystolicPressure < 0 {
+	if r.SystolicPressure != nil && *r.SystolicPressure < 0 {
 		errs["systolicPressure"] = append(errs["systolicPressure"], "systolic pressure must be greater than 0")
 	}
 
-	if r.DiastolicPressure < 0 {
+	if r.DiastolicPressure != nil && *r.DiastolicPressure < 0 {
 		errs["diastolicPressure"] = append(errs["diastolicPressure"], "diastolic pressure must be greater than 0")
 	}
 
-	if r.Temperature < 0 {
+	if r.Temperature != nil && *r.Temperature < 0 {
 		errs["temperature"] = append(errs["temperature"], "temperature must be greater than 0 C")
 	}
 
-	if r.OxygenSaturation < 0 {
-		errs["saturation"] = append(errs["saturation"], "saturation must be greater than 0%")
-	}
+	if r.OxygenSaturation != nil {
+		if *r.OxygenSaturation < 0 {
+			errs["saturation"] = append(errs["saturation"], "saturation must be greater than 0%")
+		}
 
-	if r.OxygenSaturation > 100 {
-		errs["saturation"] = append(errs["saturation"], "saturation must be at most 100%")
+		if *r.OxygenSaturation > 100 {
+			errs["saturation"] = append(errs["saturation"], "saturation must be at most 100%")
+		}
 	}
 
 	if len(r.Interview) == 0 {
@@ -194,8 +196,6 @@ func (s *Server) handleGetReportById(w http.ResponseWriter, r *http.Request) err
 	return writeJSON(w, http.StatusOK, rep)
 }
 
-// TODO implement
-// NOTE (Murilo) thinking about using this library https://github.com/signintech/gopdf
 func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) error {
 	id, err := getPathId("id", r)
 	if err != nil {
@@ -255,19 +255,35 @@ func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) erro
 	y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)
-	pdf.Text(fmt.Sprintf("Heart Rate: %d BPM", rep.HeartRate))
+	if rep.HeartRate != nil {
+		pdf.Text(fmt.Sprintf("Heart Rate: %d BPM", *rep.HeartRate))
+	} else {
+		pdf.Text("Heart Rate: N/A")
+	}
 	y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)
-	pdf.Text(fmt.Sprintf("Oxygen Saturation: %d%%", rep.OxygenSaturation))
+	if rep.OxygenSaturation != nil {
+		pdf.Text(fmt.Sprintf("Oxygen Saturation: %d%%", *rep.OxygenSaturation))
+	} else {
+		pdf.Text("Oxygen Saturation: N/A")
+	}
 	y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)
-	pdf.Text(fmt.Sprintf("Temperature: %.1f °C", rep.Temperature))
+	if rep.Temperature != nil {
+		pdf.Text(fmt.Sprintf("Temperature: %.1f °C", *rep.Temperature))
+	} else {
+		pdf.Text("Temperature: N/A")
+	}
 	y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)
-	pdf.Text(fmt.Sprintf("Blood pressure: %d/%d", rep.SystolicPressure, rep.DiastolicPressure))
+	if rep.SystolicPressure != nil && rep.DiastolicPressure != nil {
+		pdf.Text(fmt.Sprintf("Blood pressure: %d/%d", *rep.SystolicPressure, *rep.DiastolicPressure))
+	} else {
+		pdf.Text("Blood pressure: N/A")
+	}
 	y += 36
 
 	pdf.SetXY(pdf.MarginLeft(), y)
