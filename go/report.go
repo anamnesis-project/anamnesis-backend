@@ -30,6 +30,10 @@ type ReportBase struct {
 	Temperature       *float32 `json:"temperature"`
 	OxygenSaturation  *int     `json:"oxygenSaturation"`
 	Interview         []QA     `json:"interview"`
+	Occupation        string   `json:"occupation"`
+	Medications       []QA     `json:"medications"`
+	Allergies         []QA     `json:"allergies"`
+	Diseases          []QA     `json:"diseases"`
 }
 
 type ReportOutput struct {
@@ -137,6 +141,7 @@ func (s *Server) handleGetReports(w http.ResponseWriter, r *http.Request) error 
 	q := `SELECT r.report_id, r.weight, r.height, r.heart_rate,
 	r.systolic_pressure, r.diastolic_pressure, r.temperature,
 	r.oxygen_saturation, r.interview, r.issued_at,
+	r.occupation, r.medications, r.allergies, r.diseases,
 	p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth,
 	r.urgency, (c.report_id IS NOT NULL) AS consulted
 	FROM report r JOIN patient p on r.patient_id = p.patient_id
@@ -159,6 +164,7 @@ func (s *Server) handleGetReports(w http.ResponseWriter, r *http.Request) error 
 			&r.HeartRate, &r.SystolicPressure, &r.DiastolicPressure,
 			&r.Temperature, &r.OxygenSaturation,
 			&r.Interview, &r.IssuedAt,
+			&r.Occupation, &r.Medications, &r.Allergies, &r.Diseases,
 			&r.Patient.Id, &r.Patient.Name, &r.Patient.CPF,
 			&r.Patient.Sex, &r.Patient.DateOfBirth,
 			&r.Urgency, &consulted)
@@ -196,6 +202,7 @@ func (s *Server) handleGetReportById(w http.ResponseWriter, r *http.Request) err
 	return writeJSON(w, http.StatusOK, rep)
 }
 
+// TODO add new fields to report
 func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) error {
 	id, err := getPathId("id", r)
 	if err != nil {
@@ -424,21 +431,25 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 
 	q = `
 	INSERT INTO report(patient_id, weight, height, heart_rate, systolic_pressure,
-	diastolic_pressure, temperature, oxygen_saturation, interview, issued_at)
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	diastolic_pressure, temperature, oxygen_saturation, interview, issued_at,
+	r.occupation, r.medications, r.allergies, r.diseases)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	RETURNING report_id, weight, height, heart_rate, systolic_pressure,
-	diastolic_pressure, temperature, oxygen_saturation, interview, issued_at
+	diastolic_pressure, temperature, oxygen_saturation, interview, issued_at,
+	occupation, medications, allergies, diseases
 	`
 
 	row = s.db.QueryRow(context.Background(), q,
 		patient.Id, req.Weight, req.Height, req.HeartRate,
 		req.SystolicPressure, req.DiastolicPressure, req.Temperature,
-		req.OxygenSaturation, req.Interview, time.Now())
+		req.OxygenSaturation, req.Interview, time.Now(),
+		req.Occupation, req.Medications, req.Allergies, req.Diseases)
 
 	var rep ReportOutput
 	err = row.Scan(&rep.Id, &rep.Weight, &rep.Height, &rep.HeartRate,
 		&rep.SystolicPressure, &rep.DiastolicPressure, &rep.Temperature,
-		&rep.OxygenSaturation, &rep.Interview, &rep.IssuedAt)
+		&rep.OxygenSaturation, &rep.Interview, &rep.IssuedAt,
+		&rep.Occupation, &rep.Medications, &rep.Allergies, &rep.Diseases)
 
 	if err != nil {
 		return err
@@ -453,6 +464,7 @@ func (s *Server) getReportById(id int) (ReportOutput, error) {
 	SELECT r.report_id, r.weight, r.height, r.heart_rate,
 	r.systolic_pressure, r.diastolic_pressure, r.temperature,
 	r.oxygen_saturation, r.interview, r.issued_at,
+	r.occupation, r.medications, r.allergies, r.diseases,
 	p.patient_id, p.name, p.cpf, p.sex, p.date_of_birth,
 	r.urgency, (c.report_id IS NOT NULL) AS consulted
 	FROM report r JOIN patient p on r.patient_id = p.patient_id
@@ -465,6 +477,7 @@ func (s *Server) getReportById(id int) (ReportOutput, error) {
 	var consulted bool
 	err := row.Scan(&rep.Id, &rep.Weight, &rep.Height, &rep.HeartRate, &rep.SystolicPressure, &rep.DiastolicPressure,
 		&rep.Temperature, &rep.OxygenSaturation, &rep.Interview, &rep.IssuedAt,
+		&rep.Occupation, &rep.Medications, &rep.Allergies, &rep.Diseases,
 		&rep.Patient.Id, &rep.Patient.Name, &rep.Patient.CPF, &rep.Patient.Sex, &rep.Patient.DateOfBirth,
 		&rep.Urgency, &consulted)
 

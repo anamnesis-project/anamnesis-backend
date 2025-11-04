@@ -20,6 +20,10 @@ CREATE TABLE report (
     temperature        NUMERIC(3, 1),
     oxygen_saturation  INTEGER,
     interview          JSONB,
+    occupation         VARCHAR(50),
+    medications        TEXT[],
+    allergies          TEXT[],
+    diseases           TEXT[],
     issued_at          TIMESTAMP NOT NULL,
     urgency            URGENCY DEFAULT 'undefined'
 );
