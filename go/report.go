@@ -31,9 +31,9 @@ type ReportBase struct {
 	OxygenSaturation  *int     `json:"oxygenSaturation"`
 	Interview         []QA     `json:"interview"`
 	Occupation        string   `json:"occupation"`
-	Medications       []QA     `json:"medications"`
-	Allergies         []QA     `json:"allergies"`
-	Diseases          []QA     `json:"diseases"`
+	Medications       []string  `json:"medications"`
+	Allergies         []string  `json:"allergies"`
+	Diseases          []string  `json:"diseases"`
 }
 
 type ReportOutput struct {
@@ -360,7 +360,6 @@ func (s *Server) handleChangeReportUrgency(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleCreateConsultation(w http.ResponseWriter, r *http.Request) error {
 	employeeId, err := getIdFromToken(r)
 	if err != nil {
-		fmt.Println("here")
 		return InvalidToken()
 	}
 
@@ -404,6 +403,7 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 	var req CreateReportRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		fmt.Println(err)
 		return BadRequest()
 	}
 
