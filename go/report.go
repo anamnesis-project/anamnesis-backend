@@ -335,7 +335,7 @@ func (s *Server) handleChangeReportUrgency(w http.ResponseWriter, r *http.Reques
 	var req ChangeUrgencyRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return BadRequest()
+		return RequestBodyParsingError(err)
 	}
 
 	errs := req.validate()
@@ -403,8 +403,7 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 	var req CreateReportRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		fmt.Println(err)
-		return BadRequest()
+		return RequestBodyParsingError(err)
 	}
 
 	errs := req.validate()

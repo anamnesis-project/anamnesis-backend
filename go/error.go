@@ -35,6 +35,13 @@ func BadRequest() APIError {
 	}
 }
 
+func RequestBodyParsingError(err error) APIError {
+	return APIError{
+		StatusCode: http.StatusBadRequest,
+		Msg: fmt.Sprintf("error parsing request body: %s", err.Error()),
+	}
+}
+
 func InvalidJSONRequestData(errors map[string]string) APIError {
 	return APIError{
 		StatusCode: http.StatusUnprocessableEntity,

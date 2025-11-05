@@ -143,7 +143,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	var req LoginRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return BadRequest()
+		return RequestBodyParsingError(err)
 	}
 
 	errs := req.validate()
@@ -185,7 +185,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 	var req RegisterRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return BadRequest()
+		return RequestBodyParsingError(err)
 	}
 
 	errs := req.validate()
@@ -306,7 +306,7 @@ func (s *Server) handlePatchEmployeePermissions(w http.ResponseWriter, r *http.R
 	var req PatchEmployeeRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return BadRequest()
+		return RequestBodyParsingError(err)
 	}
 
 	q := `SELECT 1 FROM employee_role WHERE role_id = $1 LIMIT 1`
