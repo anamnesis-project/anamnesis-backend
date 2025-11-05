@@ -432,7 +432,7 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 	q = `
 	INSERT INTO report(patient_id, weight, height, heart_rate, systolic_pressure,
 	diastolic_pressure, temperature, oxygen_saturation, interview, issued_at,
-	r.occupation, r.medications, r.allergies, r.diseases)
+	occupation, medications, allergies, diseases)
 	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	RETURNING report_id, weight, height, heart_rate, systolic_pressure,
 	diastolic_pressure, temperature, oxygen_saturation, interview, issued_at,
