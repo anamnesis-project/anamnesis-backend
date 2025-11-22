@@ -68,9 +68,9 @@ func (r CreateReportRequest) validate() map[string][]string {
 		errs["name"] = append(errs["name"], "patient name missing")
 	}
 
-	if !ValidateCPF(r.Patient.CPF) {
-		errs["cpf"] = append(errs["cpf"], "invalid CPF")
-	}
+	// if !ValidateCPF(r.Patient.CPF) {
+	// 	errs["cpf"] = append(errs["cpf"], "invalid CPF")
+	// }
 
 	if r.Patient.Sex != nil && *r.Patient.Sex != Male && *r.Patient.Sex != Female {
 		errs["sex"] = append(errs["sex"], "invalid sex")
