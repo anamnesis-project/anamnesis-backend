@@ -22,8 +22,8 @@ const (
 )
 
 type ReportBase struct {
-	Weight             float32 `json:"weight"`
-	Height             int     `json:"height"`
+	Weight            *float32 `json:"weight"`
+	Height            *int     `json:"height"`
 	HeartRate         *int     `json:"heartRate"`
 	SystolicPressure  *int     `json:"systolicPressure"`
 	DiastolicPressure *int     `json:"diastolicPressure"`
@@ -31,9 +31,9 @@ type ReportBase struct {
 	OxygenSaturation  *int     `json:"oxygenSaturation"`
 	Interview         []QA     `json:"interview"`
 	Occupation        string   `json:"occupation"`
-	Medications       []string  `json:"medications"`
-	Allergies         []string  `json:"allergies"`
-	Diseases          []string  `json:"diseases"`
+	Medications       []string `json:"medications"`
+	Allergies         []string `json:"allergies"`
+	Diseases          []string `json:"diseases"`
 }
 
 type ReportOutput struct {
@@ -80,11 +80,11 @@ func (r CreateReportRequest) validate() map[string][]string {
 		errs["dateOfBirth"] = append(errs["dateOfBirth"], "invalid date of birth")
 	}
 
-	if r.Weight < 0 {
+	if r.Weight != nil && *r.Weight < 0 {
 		errs["weight"] = append(errs["weight"], "weight must be greater than 0 Kg")
 	}
 
-	if r.Height < 0 {
+	if r.Height != nil && *r.Height < 0 {
 		errs["height"] = append(errs["height"], "height must be greater than 0 cm")
 	}
 
@@ -254,11 +254,19 @@ func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) erro
 	y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)
-	pdf.Text(fmt.Sprintf("Height: %.2f m", float32(rep.Height / 100)))
+	if rep.Height != nil {
+		pdf.Text(fmt.Sprintf("Height: %.2f m", float32(*rep.Height) / 100.0))
+	} else {
+		pdf.Text("Height: N/A")
+	}
 	y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)
-	pdf.Text(fmt.Sprintf("Weight: %.1f Kg", rep.Weight))
+	if rep.Weight != nil {
+		pdf.Text(fmt.Sprintf("Weight: %.1f Kg", *rep.Weight))
+	} else {
+		pdf.Text("Weight: N/A")
+	}
 	y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)

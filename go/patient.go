@@ -14,18 +14,18 @@ const (
 )
 
 type PatientInput struct {
-	Name        string    `json:"name"`
-	CPF         string    `json:"cpf"`
-	Sex         Sex       `json:"sex"`
-	DateOfBirth time.Time `json:"dateOfBirth"`
+	Name        string     `json:"name"`
+	CPF         string     `json:"cpf"`
+	Sex         *Sex       `json:"sex"`
+	DateOfBirth *time.Time `json:"dateOfBirth"`
 }
 
 type PatientOutput struct {
-	Id          int       `json:"id"`
-	Name        string    `json:"name"`
-	CPF         string    `json:"cpf"`
-	Sex         Sex       `json:"sex"`
-	DateOfBirth time.Time `json:"dateOfBirth"`
+	Id          int        `json:"id"`
+	Name        string     `json:"name"`
+	CPF         string     `json:"cpf"`
+	Sex         *Sex       `json:"sex"`
+	DateOfBirth *time.Time `json:"dateOfBirth"`
 }
 
 func (s *Server) handleGetPatients(w http.ResponseWriter, r *http.Request) error {
@@ -88,8 +88,10 @@ func (s *Server) handleGetPatientReports(w http.ResponseWriter, r *http.Request)
 
 	q = `SELECT r.report_id, r.weight, r.height, r.heart_rate,
 	r.systolic_pressure, r.diastolic_pressure, r.temperature,
-	r.oxygen_saturation, r.interview, r.issued_at
-	FROM report r WHERE r.patient_id = $1`
+	r.oxygen_saturation, r.interview, r.issued_at,
+	r.occupation, r.medications, r.allergies, r.diseases,
+	FROM report r LEFT JOIN consultation c on r.report_id = c.report_id
+	WHERE r.patient_id = $1`
 
 	rows, err := s.db.Query(context.Background(), q, p.Id)
 	if err != nil {
@@ -99,16 +101,25 @@ func (s *Server) handleGetPatientReports(w http.ResponseWriter, r *http.Request)
 	reports := make([]ReportOutput, 0)
 	for rows.Next() {
 		var r ReportOutput
+		var consulted bool
 		r.Patient = p
 		err := rows.Scan(
 			&r.Id, &r.Weight, &r.Height,
 			&r.HeartRate, &r.SystolicPressure, &r.DiastolicPressure,
 			&r.Temperature, &r.OxygenSaturation,
-			&r.Interview, &r.IssuedAt)
+			&r.Interview, &r.IssuedAt,
+			&r.Occupation, &r.Medications, &r.Allergies, &r.Diseases,
+			&r.Urgency, &consulted,
+		)
 
 		if err != nil {
 			return err
 		}
+
+		if consulted {
+			r.Consultation, err = s.getConsultation(r.Id)
+		}
+
 		reports = append(reports, r)
 	}
 
