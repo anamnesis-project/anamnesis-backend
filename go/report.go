@@ -72,7 +72,7 @@ func (r CreateReportRequest) validate() map[string][]string {
 		errs["cpf"] = append(errs["cpf"], "invalid CPF")
 	}
 
-	if r.Patient.Sex != Male && r.Patient.Sex != Female {
+	if r.Patient.Sex != nil && *r.Patient.Sex != Male && *r.Patient.Sex != Female {
 		errs["sex"] = append(errs["sex"], "invalid sex")
 	}
 
