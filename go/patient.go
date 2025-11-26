@@ -90,6 +90,7 @@ func (s *Server) handleGetPatientReports(w http.ResponseWriter, r *http.Request)
 	r.systolic_pressure, r.diastolic_pressure, r.temperature,
 	r.oxygen_saturation, r.interview, r.issued_at,
 	r.occupation, r.medications, r.allergies, r.diseases,
+	r.urgency, (c.report_id IS NOT NULL) AS consulted
 	FROM report r LEFT JOIN consultation c on r.report_id = c.report_id
 	WHERE r.patient_id = $1`
 
