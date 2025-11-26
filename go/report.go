@@ -114,9 +114,10 @@ func (r CreateReportRequest) validate() map[string][]string {
 		}
 	}
 
-	if len(r.Interview) == 0 {
-		errs["interview"] = append(errs["interview"], "interview must not be empty")
-	}
+	// // bypassing this so that failed interviews also pass
+	// if len(r.Interview) == 0 {
+	// 	errs["interview"] = append(errs["interview"], "interview must not be empty")
+	// }
 
 	return errs
 }
