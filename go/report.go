@@ -242,7 +242,6 @@ func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) erro
 	pdf.SetFontSize(12)
 	pdf.SetXY(pdf.MarginLeft(), 60)
 	rect := gopdf.Rect{ W: 100, H: 32 }
-	pdf.Cell(&rect, fmt.Sprintf("Sex: %s", rep.Patient.Sex))
 	if rep.Patient.DateOfBirth != nil {
 		pdf.Cell(&rect, fmt.Sprintf("Date of Birth: %s", rep.Patient.DateOfBirth.Format("02/01/2006")))
 	} else {
@@ -250,13 +249,17 @@ func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	pdf.SetXY(400, 70)
-	pdf.Text(fmt.Sprintf("Issued at: %s", rep.IssuedAt.Format("02/01/2006")))
+	if rep.Patient.Sex != nil {
+		pdf.Text(fmt.Sprintf("Issued at: %s", rep.IssuedAt.Format("02/01/2006")))
+	} else {
+		pdf.Text("Sex: N/A")
+	}
 
 	y := 100.0
 
-	pdf.SetXY(pdf.MarginLeft(), y)
-	pdf.Text(fmt.Sprintf("Urgency: %s", rep.Urgency))
-	y += 20
+	// pdf.SetXY(pdf.MarginLeft(), y)
+	// pdf.Text(fmt.Sprintf("Urgency: %s", rep.Urgency))
+	// y += 20
 
 	pdf.SetXY(pdf.MarginLeft(), y)
 	if rep.Height != nil {
@@ -319,6 +322,11 @@ func (s *Server) handleGetReportPDF(w http.ResponseWriter, r *http.Request) erro
 
 		pdf.SetXY(pdf.MarginLeft(), y)
 		pdf.Text(fmt.Sprintf("Answer: %s", qa.Answer))
+		y += 32
+	}
+	if len(rep.Interview) == 0 {
+		pdf.SetXY(pdf.MarginLeft(), y)
+		pdf.Text("No interview questions.")
 		y += 32
 	}
 
